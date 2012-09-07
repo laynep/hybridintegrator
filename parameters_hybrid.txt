@@ -1,0 +1,15 @@
+&parameters
+	m = 30D0,
+	mu = 500D3,
+	nu = .015D3,
+	lambda = 6.8D-3,
+	energy_scale = 1D3/
+&ics
+	points=10,
+	IC=2
+/
+&sample
+	samp_len=2500000,
+	samp_wid=4
+/
+
