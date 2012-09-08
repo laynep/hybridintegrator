@@ -81,10 +81,10 @@ END SUBROUTINE parameters_hybrid
 !*************************************************************************************
 !FUNCTION which describes the potential.
 
-DOUBLE PRECISION FUNCTION V_h(Y)
+pure DOUBLE PRECISION FUNCTION V_h(Y)
 IMPLICIT NONE
 
-	DOUBLE PRECISION, DIMENSION(:) :: Y
+	DOUBLE PRECISION, DIMENSION(:), intent(in) :: Y
 
 	V_h = (lambda**4D0)*((1D0 - ((Y(3)*Y(3))/(m*m)))**2D0 + ((Y(2)*Y(2))/(mu*mu)) + ((Y(2)*Y(2)*Y(3)*Y(3))/ (nu**4D0)))
 
@@ -139,7 +139,6 @@ IMPLICIT NONE
 	
 		END DO
 	
-
 		!Set the phi_dot IC by the total energy density constraint.
 		CALL random_number(rand_4)
 		IF(rand_4 < .5) THEN
@@ -149,10 +148,8 @@ IMPLICIT NONE
 			Y(4) = -1D0*SQRT(2E0*rho_kinetic - (Y(5)*Y(5)))
 			phi_dot_0 = Y(4)
 		END IF
-
 		
 	ELSEIF (param_constr==1) THEN
-
 		DO
 			!IC for Y(2)~phi randomly in range phi_min to phi_max.
 			CALL random_number(rand_1)
@@ -195,13 +192,11 @@ IMPLICIT NONE
 			Y(5) = -SQRT(2D0*rho_kinetic - (Y(4)*Y(4)))
 			psi_dot_0 = Y(5)
 		END IF
-
 	END IF
 
 	!Reinitialize the e-fold value: Y(1)~N.
 	Y(1)=0D0 
 		
-	
 
 END SUBROUTINE D_IC_EQEN
 
@@ -380,7 +375,7 @@ END SUBROUTINE EQEN_EQVEL
 
 !SUBROUTINE that will take as input a point Y0 and a sample table, sample_table.  This subroutine will perform a nearest neighbor interpolation on sample_table with respect to the density of points, within a given box size, eps.  By default this will not give duplicates, i.e. Y_init != Y_fin.  If you want to override this, specify dup=1 .
 
-SUBROUTINE IC_METR(Y,sample_table,iccounter,eps,dup)
+SUBROUTINE IC_METR(Y,sample_table,iccounter,eps,dup,test)
 USE sorters, ONLY : locate, heapsorttotal
 IMPLICIT NONE
 
@@ -388,6 +383,7 @@ IMPLICIT NONE
 	DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE, INTENT(INOUT) :: sample_table
 	DOUBLE PRECISION, OPTIONAL, INTENT(INOUT) :: eps
 	INTEGER, INTENT(IN) :: iccounter
+	integer, optional, intent(in) :: test
 	INTEGER, OPTIONAL, INTENT(IN) :: dup
 	DOUBLE PRECISION :: accept, rand
 	DOUBLE PRECISION, DIMENSION(5) :: YPROP
@@ -455,34 +451,30 @@ doi:		DO i=1,n
 	END IF
 	DO
 		!GET A NEW POINT
-!		CALL D_IC_EQEN(YPROP,iccounter)
-
-
-
-		!TEST!!!!
-		CALL EQEN_SLICING(YPROP)
+		if (.not. present(test)) then 
+			call D_IC_EQEN(YPROP,iccounter)
+		else
+			!TEST!!!!
+			call EQEN_SLICING(YPROP)
+		end if
 
 		!CALC ACCEPT RATIO
 		accept=accept_ratio(Y,YPROP,eps)
-!PRINT*,"ACCEPT",accept
 
 		!GEN RAND NUMB
 		CALL random_number(rand)
 	
 		!MOVE TO NEW POINT IF RAND<A
-!PRINT*,"REALLY?",rand,accept,rand<accept
 		IF (rand<accept) THEN
-xxglobal_succ=xxglobal_succ+1
+			xxglobal_succ=xxglobal_succ+1
 			Y=YPROP
 			EXIT
 		END IF
-xxglobal_fail=xxglobal_fail+1
+		xxglobal_fail=xxglobal_fail+1
 
 		!IF NO DUPLICATES, THEN CYCLE UNTIL GET UNIQUE NUMB, OTHERWISE RETURN
 		IF (PRESENT(dup)) EXIT		
 	END DO
-	
-
 
 END SUBROUTINE IC_METR
 
