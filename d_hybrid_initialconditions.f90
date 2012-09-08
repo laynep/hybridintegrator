@@ -65,16 +65,8 @@ SUBROUTINE parameters_hybrid()
 IMPLICIT NONE
 
 	OPEN(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
-
 	READ(unit=10000, nml=parameters)
-
 	CLOSE(unit=10000)
-
-!	m=.03D0*m_planck
-!	mu=500D0*m_planck
-!	nu=.015D0*m_planck 	!SQRT(3D-4)*m_planck
-!	lambda=	7D-6*m_planck		!6.8D-6*m_planck
-!	energy_scale=.5D0*m_planck
 
 END SUBROUTINE parameters_hybrid
 
@@ -86,7 +78,8 @@ IMPLICIT NONE
 
 	DOUBLE PRECISION, DIMENSION(:), intent(in) :: Y
 
-	V_h = (lambda**4D0)*((1D0 - ((Y(3)*Y(3))/(m*m)))**2D0 + ((Y(2)*Y(2))/(mu*mu)) + ((Y(2)*Y(2)*Y(3)*Y(3))/ (nu**4D0)))
+	V_h = (lambda*lambda*lambda*lambda)*((1D0 - ((Y(3)*Y(3))/(m*m)))**2D0 +&
+		& ((Y(2)*Y(2))/(mu*mu)) + ((Y(2)*Y(2)*Y(3)*Y(3))/ (nu*nu*nu*nu)))
 
 END FUNCTION V_h
 
@@ -521,10 +514,8 @@ IMPLICIT NONE
 	DO i=start,ending
 		test=(/0, numbpoints_sample(i,1),numbpoints_sample(i,2),&
 			&numbpoints_sample(i,3),numbpoints_sample(i,4) /)
-!PRINT*,"TEST",test
 	doj2:	DO j=1,SIZE(Y2)
 			check=.TRUE.
-!PRINT*,"Checking",CEILING(Y2(j)/eps), test(j), CEILING(Y2(j)/eps) == test(j)
 			IF (CEILING(Y2(j)/eps) .NE. test(j)) THEN
 				check=.FALSE.
 				EXIT doj2
@@ -532,16 +523,11 @@ IMPLICIT NONE
 
 		END DO doj2
 
-!PRINT*,"CHECK",check
-
 		IF (check) THEN
 			p2=numbpoints_sample(i,5)*1D0
 			EXIT
 		END IF
 	END DO
-
-!PRINT*,"p old",p1
-!PRINT*,"p new",p2
 
 	IF (p2<=1.1D0) THEN
 		a=0D0
@@ -570,10 +556,6 @@ IMPLICIT NONE
 		CALL random_number(rand_1)
 		Y(i)=rand_1
 	END DO
-
-
-
-
 
 END SUBROUTINE IC_TEST
 

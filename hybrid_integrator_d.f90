@@ -31,6 +31,7 @@ IMPLICIT NONE
 	DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: sample_table
 	INTEGER :: samp_len, samp_wid
 	logical :: leave, allfailcheck, printing
+	character(len=100) :: datafile
 
 	!*****************************
 	!FCVODE PARAMS
@@ -43,7 +44,7 @@ IMPLICIT NONE
 	!*****************************
 
 	NAMELIST /ics/ points, IC
-	NAMELIST /sample/ samp_len, samp_wid
+	NAMELIST /sample/ samp_len, samp_wid, datafile
 
 	!Read numb of data points per numb of processes & IC type from file.
 	OPEN(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
@@ -111,17 +112,18 @@ IMPLICIT NONE
 	ELSE IF (IC==4) THEN
 		!Set IC at random on EQEN slice.
 		call D_IC_EQEN(Y0,iccounter)
-		!Load the data which we will later sample via nearest neighbor interpolation.
+		!Get info on sample table from namelist.
 		OPEN(unit=10000, file="parameters_hybrid.txt", status="old",&
 		& delim = "apostrophe")
 		READ(unit=10000, nml=sample)
 		CLOSE(unit=10000)
+		datafile=trim(datafile)
 		
+		!Load the data to sample via nearest neighbor interpolation.
 		ALLOCATE(sample_table(samp_len,samp_wid))
 		sample_table=0D0
-
 		!Data *must* be in form Y(2),...,Y(5), where Y(1)=0D0 assumed.
-		OPEN(unit=10001, file="datasample.bin", status="old", form="UNFORMATTED")
+		OPEN(unit=10001, file=datafile, status="old", form="UNFORMATTED")
 		DO i=1,SIZE(sample_table,1)		
 			READ(unit=10001,END=10) (sample_table(i,j),j=2,5)
 		END DO
@@ -141,8 +143,6 @@ IMPLICIT NONE
 	call FCVSETIIN("MAX_NSTEPS", 5000000, IER)
 	call FCVDENSE(NEQ, IER)
 	call FCVDENSESETJAC (1, IER)
-
-
 
 
 	!Loop over ICs until achieve numb of desired points.
@@ -194,12 +194,10 @@ do1: 	DO WHILE (successlocal<points)
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing)
 		if (allfailcheck) exit do1
 
-
 	END DO do1
 
 	!Halts processors here.
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-
 	!Gives slave data to master.
 	call MPI_REDUCE(badfieldlocal,badfieldcounter,1,MPI_INTEGER,&
 		&MPI_SUM,0,MPI_COMM_WORLD,ierr)
@@ -209,7 +207,6 @@ do1: 	DO WHILE (successlocal<points)
 		&MPI_SUM,0,MPI_COMM_WORLD,ierr)
 	call MPI_REDUCE(errorlocal,errorcount,1,MPI_INTEGER,MPI_SUM,&
 		&0,MPI_COMM_WORLD,ierr)
-
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
 	!Print from master.
@@ -251,40 +248,46 @@ END SUBROUTINE
 
 
 !***********************************************************************
-!RHS
+!RHS of equation to integrate.
 !***********************************************************************
 SUBROUTINE FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
 IMPLICIT NONE
 	
 	!******************
-	DOUBLE PRECISION :: Y(*), YDOT(*), T
-	INTEGER :: IPAR(*), IER
-	DOUBLE PRECISION :: RPAR(*)
+	double precision, intent(in) :: Y(*), t
+	double precision, intent(inout) :: ydot(*)
+!	DOUBLE PRECISION :: Y(*), YDOT(*), T
+	INTEGER, intent(in) :: IPAR(*)
+	integer, intent(out) :: IER
+	DOUBLE PRECISION, intent(in) :: RPAR(*)
 	!******************
 
 	DOUBLE PRECISION :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
 
 
 	!Potential and its derivatives.
-	V = (RPAR(1)**4D0)*((1D0 - ((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))**2D0 &
+	V = (RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*((1D0 - &
+		&((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))**2D0 &
 		&+ ((Y(2)*Y(2))/(RPAR(3)*RPAR(3)))&
 		& + ((Y(2)*Y(2)*Y(3)*Y(3))/ (RPAR(4)**4D0)))
 
-	D_phi_V = 2D0*(RPAR(1)**4D0)*(((Y(2))/(RPAR(3)*RPAR(3)))+ &
+	D_phi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*(((Y(2))/(RPAR(3)*RPAR(3)))+ &
 		&((Y(2)*Y(3)*Y(3))/(RPAR(4)**4D0)))
 
-	D_psi_V = 2D0*(RPAR(1)**4D0)*(((-2D0*Y(3))/(RPAR(2)*RPAR(2)))*(1D0 &
+	D_psi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*(((-2D0*Y(3))/&
+		&(RPAR(2)*RPAR(2)))*(1D0 &
 		&-((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))+&
 		& ((Y(2)*Y(2)*Y(3))/(RPAR(4)**4D0)))
 
-	DD_phi_V = 2D0*(RPAR(1)**4D0)*((1D0/(RPAR(3)*RPAR(3)))+&
+	DD_phi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*((1D0/(RPAR(3)*RPAR(3)))+&
 		&((Y(3)*Y(3))/(RPAR(4)**4D0)))
 
-	DD_psi_V = 2D0*(RPAR(1)**4D0)*(((-2D0)/(RPAR(2)*RPAR(2)))+ &
+	DD_psi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*(((-2D0)/(RPAR(2)*RPAR(2)))+ &
 		&((4D0*Y(3)*Y(3))/(RPAR(2)**4D0))+&
 		& ((Y(2)*Y(2))/(RPAR(4)**4D0)))
 
-	D_phi_D_psi_V = (4D0*(RPAR(1)**4D0)*Y(2)*Y(3))/(RPAR(4)**4D0)
+	D_phi_D_psi_V = (4D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*Y(2)*Y(3))/&
+		&(RPAR(4)*RPAR(4)*RPAR(4)*RPAR(4))
 
 	Hub = SQRT(RPAR(5)*(.5D0*((Y(4)*Y(4)) + (Y(5)*Y(5))) + V))
 
@@ -302,15 +305,20 @@ IMPLICIT NONE
 END SUBROUTINE FCVFUN
 
 !***************************************************************************
+!Jacobian of RHS of equation to integrate.
 SUBROUTINE FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
 			&WK1, WK2, WK3, IER)
 IMPLICIT NONE
 
 	!**************************
-	DOUBLE PRECISION :: Y(*), FY(*), DJAC(NEQ,*), T, H
-	INTEGER :: IPAR(*), NEQ, IER
-	DOUBLE PRECISION :: RPAR(*)
-	DOUBLE PRECISION :: WK1(*), WK2(*), WK3(*)
+	double precision, intent(in) :: Y(*), FY(*), T, H
+	integer, intent(in) :: IPAR(*), NEQ
+	integer, intent(out) :: IER
+	double precision, intent(inout) :: DJAC(NEQ,*)
+!	DOUBLE PRECISION :: Y(*), FY(*), DJAC(NEQ,*), T, H
+!	INTEGER :: IPAR(*), NEQ, IER
+	DOUBLE PRECISION, intent(in) :: RPAR(*)
+	DOUBLE PRECISION, intent(in) :: WK1(*), WK2(*), WK3(*)
 	!**************************
 
 	DOUBLE PRECISION :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub

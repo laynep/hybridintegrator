@@ -10,6 +10,7 @@
 /
 &sample
 	samp_len=2500000,
-	samp_wid=4
+	samp_wid=4,
+	datafile="datasample.bin"
 /
 
