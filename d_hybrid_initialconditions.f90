@@ -177,16 +177,24 @@ END SUBROUTINE D_IC_EQEN
 !Subroutine which will take one pt y0 and give another point y1 that is very close to it, but also on the equal energy slice.  
 !NOTE: this routine DOES NOT initialize the e-foldings to zero.  It is intended to be used with the Lyapunov integrator and thus should carry the value of e-folding with it.
 
-subroutine ic_eqen_pert(y0,y1,iccounter,sig,en)
+subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 implicit none
 
 	double precision, dimension(5), intent(in) :: y0
 	double precision, dimension(5), intent(out) :: y1
+	interface
+		pure function metric(pt1,pt2)
+			implicit none
+			double precision, dimension(:), intent(in) :: pt1, pt2
+			double precision :: metric
+		end function metric
+	end interface
 	double precision, optional, intent(in) :: en, sig
 	integer, intent(in) :: iccounter
 	double precision :: rand, v_0, rho_kinetic, e, tol, sgn
-	integer :: param_constr, x, y
+	integer :: param_constr, x, y, i
 	double precision, dimension(5) :: maxim, minim
+	double precision, dimension(4) :: a0, a1
 
 	!Set energy.
 	if (present(en)) then
@@ -217,38 +225,47 @@ implicit none
 		y=4
 	end if
 
-	do
-		!set phi from energy constraint.
-		call random_number(rand)
-		y1(2)= (rand*(maxim(2)-minim(2))) + minim(2)
-		phi_0 = y1(2)
-		!ic for y(3)~psi randomly in range psi_min to psi_max.
-		call random_number(rand)
-		y1(3)= (rand*(maxim(3)-minim(3))) + minim(3)
-		psi_0 = y1(3)
-		!initial value of the potential.
-		v_0 = v_h(y1)
-		!energy density remaining in kinetic term.
-		rho_kinetic = (e**4) - v_0
-		if (rho_kinetic<0) cycle 
-		!sets the psi_dot ic to the range psi_dot_max to psi_dot_min
-		call random_number(rand)
-		y1(y) = (rand*(maxim(y)-minim(y))) + minim(y)
-		if (y==5) then
-			psi_dot_0 = y1(y)
+do1:	do
+	do2:	do
+			!set phi from energy constraint.
+			call random_number(rand)
+			y1(2)= (rand*(maxim(2)-minim(2))) + minim(2)
+			phi_0 = y1(2)
+			!ic for y(3)~psi randomly in range psi_min to psi_max.
+			call random_number(rand)
+			y1(3)= (rand*(maxim(3)-minim(3))) + minim(3)
+			psi_0 = y1(3)
+			!initial value of the potential.
+			v_0 = v_h(y1)
+			!energy density remaining in kinetic term.
+			rho_kinetic = (e**4) - v_0
+			if (rho_kinetic<0) cycle 
+			!sets the psi_dot ic to the range psi_dot_max to psi_dot_min
+			call random_number(rand)
+			y1(y) = (rand*(maxim(y)-minim(y))) + minim(y)
+			if (y==5) then
+				psi_dot_0 = y1(y)
+			else 
+				phi_dot_0 = y1(y)
+			end if
+			if(2d0*rho_kinetic - (y1(5)*y1(5)) > 0) exit do2
+		end do do2
+		!Set the phi_dot IC by the total energy density constraint.
+		sgn=y0(x)/abs(y0(x))
+		Y1(x) = sgn*sqrt(2D0*rho_kinetic - (Y1(y)*Y1(y)))
+		if (x==5) then
+			psi_dot_0 = y1(x)
 		else 
-			phi_dot_0 = y1(y)
+			phi_dot_0 = y1(x)
 		end if
-		if(2d0*rho_kinetic - (y1(5)*y1(5)) > 0) exit
-	end do
-	!Set the phi_dot IC by the total energy density constraint.
-	sgn=y0(x)/abs(y0(x))
-	Y1(x) = sgn*sqrt(2D0*rho_kinetic - (Y1(y)*Y1(y)))
-	if (x==5) then
-		psi_dot_0 = y1(x)
-	else 
-		phi_dot_0 = y1(x)
-	end if
+		!Exit condition.
+		!Load vector.
+		do i=1, 4
+			a0(i) = y0(i+1)
+			a1(i) = y1(i+1)
+		end do
+		if (metric(a0,a1) .le. tol ) exit do1
+	end do do1
 
 
 end subroutine ic_eqen_pert

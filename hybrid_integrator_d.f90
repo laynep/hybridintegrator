@@ -118,16 +118,17 @@ do1: 	do while (successlocal<points)
 		!Get new point if on second or greater run.
 		if (localcount>1) then
 			call new_point(y0,iccounter,sample_table, ic)
-			
+			!Reinit time and Y
 			Y=Y0
 			T0=0D0
 			TOUT = 1D1
 			T=T0
-			ITASK = 1
 			!Reinitialize integrator.
+			ITASK = 1
 			call FCVREINIT(T0, Y0, IATOL, RTOL, ATOL, IER)			
 		end if
 		
+		!Counters
 		success = 0
 		iccounter = iccounter + 1
 	
