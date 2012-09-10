@@ -28,11 +28,11 @@ implicit none
 
 	!Open.
 	if (present(formt)) then
-		OPEN(UNIT=sucunit,status='new',file=sucname, form=formt)
-		OPEN(UNIT=failunit,status='new',file=failname, form=formt)
+		open(unit=sucunit,status='new',file=sucname, form=formt)
+		open(unit=failunit,status='new',file=failname, form=formt)
 	else
-		OPEN(UNIT=sucunit,status='new',file=sucname, form='unformatted')
-		OPEN(UNIT=failunit,status='new',file=failname, form='unformatted')
+		open(unit=sucunit,status='new',file=sucname, form='unformatted')
+		open(unit=failunit,status='new',file=failname, form='unformatted')
 	end if
 
 end subroutine open_hybridfiles
@@ -136,15 +136,15 @@ implicit none
 	double precision, dimension(:,:), allocatable, intent(inout) :: sample_table
 
 
-	IF (IC == 1) THEN
-		CALL D_IC_ZEROV(Y0)
-	ELSE IF (IC == 2) THEN
-		CALL D_IC_EQEN(Y0,iccounter)
-	ELSE IF (IC==3) THEN
-		CALL EQEN_SLICING(Y0)
-	ELSE IF (IC==4) THEN
-		CALL IC_METR(Y0,sample_table,iccounter)
-	END IF
+	if (ic == 1) then
+		call d_ic_zerov(y0)
+	else if (ic == 2) then
+		call d_ic_eqen(y0,iccounter)
+	else if (ic==3) then
+		call eqen_slicing(y0)
+	else if (ic==4) then
+		call ic_metr(y0,sample_table,iccounter)
+	end if
 
 end subroutine new_point
 
@@ -168,7 +168,7 @@ implicit none
 	!Check if  fields fell into minima (if engy dnsty <
 	! dnsty at infl end)
 	check = (.5D0*( (Y(4)*Y(4)) + (Y(5)*Y(5))) &
-		&+V - (lambda**4D0))
+		&+V - (lambda*lambda*lambda*lambda))
 
 	!Gives a 1 if inflation is successful.
 	leave = .false.

@@ -13,52 +13,42 @@
 !*****************************************************************
 
 
-PROGRAM hybrid_integrator_d
-USE d_hybrid_initialconditions
+program hybrid_integrator_d
+use d_hybrid_initialconditions
 use hybrid_subroutines
+use rng
 use mpi
-IMPLICIT NONE
+implicit none
 
-	INTEGER:: i,j, points, success, counter, iccounter, sucunit,&
+	integer:: i,j, points, success, counter, iccounter, sucunit,&
 		& failunit, failcount, localcount
-	INTEGER :: errorcount, iend
-	INTEGER :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
+	integer :: errorcount, iend
+	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
 		& errorlocal, ierr, rc
-	INTEGER :: numtasks, rank
-	INTEGER :: IC
-	DOUBLE PRECISION :: check, V, ratio, dt
-	DOUBLE PRECISION :: V_0
-	DOUBLE PRECISION, DIMENSION(:,:), ALLOCATABLE :: sample_table
-	INTEGER :: samp_len, samp_wid
+	integer :: numtasks, rank
+	integer :: ic
+	double precision :: check, v, ratio, dt
+	double precision :: v_0
+	double precision, dimension(:,:), allocatable :: sample_table
 	logical :: leave, allfailcheck, printing
-	character(len=100) :: datafile
 
 	!*****************************
 	!FCVODE PARAMS
-	DOUBLE PRECISION :: Y(5), RPAR(5)
-	INTEGER :: IPAR(5), METH, ITMETH
-	REAL ::  ROUT(6)
-	INTEGER(KIND=8) :: NEQ, NGLOBAL
-	INTEGER :: IER, IATOL, IOUT(21), ITASK
-	DOUBLE PRECISION :: T0, Y0(5), T, TOUT, RTOL, ATOL(5)
+	double precision :: y(5), rpar(5)
+	integer :: ipar(5), meth, itmeth
+	real ::  rout(6)
+	integer(kind=8) :: neq, nglobal
+	integer :: ier, iatol, iout(21), itask
+	double precision :: t0, y0(5), t, tout, rtol, atol(5)
 	!*****************************
 
-	NAMELIST /ics/ points, IC
-	NAMELIST /sample/ samp_len, samp_wid, datafile
+	namelist /ics/ points, IC, printing
 
-	!Read numb of data points per numb of processes & IC type from file.
-	OPEN(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
-	READ(unit=10000, nml=ics)
-	CLOSE(unit=10000)
-!	points = 100000
-
-!	IC = 1		!IC with zero vel slice.
-!	IC = 2		!IC on eq energy slice.
-!	IC = 3		!IC as a slicing of EQEN slice.
-!	IC = 4		!IC from Metropolis Algorithm.
-
-	!Do we want to print to stdout?  Excludes some error messages...
-	printing = .true.
+	!Read numb of (data points per numb of processes) & IC type from file.
+	!Do we want to print to stdout?
+	open(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+	read(unit=10000, nml=ics)
+	close(unit=10000)
 
 	!Global counters.
 	counter = 0
@@ -75,11 +65,11 @@ IMPLICIT NONE
 
 	!Parallelizes.
 	call MPI_INIT(ierr)
-		IF(ierr .NE. MPI_SUCCESS) THEN
+		if(ierr .ne. MPI_SUCCESS) then
 			if(printing) print*,"Error parallelizing."
 			call MPI_ABORT(MPI_COMM_WORLD, rc, ierr)
 			stop
-		END IF
+		end if
 	!Obtains info on processors.
 	call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
 	call MPI_COMM_SIZE(MPI_COMM_WORLD, numtasks, ierr)
@@ -95,46 +85,23 @@ IMPLICIT NONE
 	!Print stats.
 	if(rank==0) call hybrid_initstats(ic, printing)
 
-	!Set seed for each thread.
-	call init_random_seed1(rank)
+	!Set seed for each thread from module rng.
+	call init_random_seed(rank)
 
 	!Set some params for FCVODE integrator.
 	call set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout)
 
 	!Set IC.
-	IF (IC == 1) THEN
+	if (IC == 1) then
 		call D_IC_ZEROV(Y0)
-	ELSE IF (IC == 2) THEN
+	else if (IC == 2) then
 		call D_IC_EQEN(Y0,iccounter)
-	ELSE IF (IC==3) THEN
+	else if (IC==3) then
 		call EQEN_SLICING(Y0)
-	ELSE IF (IC==4) THEN
-		!Set IC at random on EQEN slice.
-		call D_IC_EQEN(Y0,iccounter)
-		!Get info on sample table from namelist.
-		OPEN(unit=10000, file="parameters_hybrid.txt", status="old",&
-		& delim = "apostrophe")
-		READ(unit=10000, nml=sample)
-		CLOSE(unit=10000)
-		datafile=trim(datafile)
-		
-		!Load the data to sample via nearest neighbor interpolation.
-		ALLOCATE(sample_table(samp_len,samp_wid))
-		sample_table=0D0
-		!Data *must* be in form Y(2),...,Y(5), where Y(1)=0D0 assumed.
-		OPEN(unit=10001, file=datafile, status="old", form="UNFORMATTED")
-		DO i=1,SIZE(sample_table,1)		
-			READ(unit=10001,END=10) (sample_table(i,j),j=2,5)
-		END DO
-10		CLOSE(unit=10001)
-
-		!Burn in.
-		DO i=1, 10000
-			!Get new IC from sample_table.
-			call IC_METR(Y0,sample_table,iccounter)
-		END DO
-	END IF
+	else if (IC==4) then
+		call IC_METR_INIT(Y0, iccounter, sample_table, 10000)
+	end if
 	Y=Y0
 
 	!Initialize FCVODE integrator.
@@ -146,11 +113,10 @@ IMPLICIT NONE
 
 
 	!Loop over ICs until achieve numb of desired points.
-do1: 	DO WHILE (successlocal<points) 
-
+do1: 	do while (successlocal<points) 
 		localcount = localcount + 1
 		!Get new point if on second or greater run.
-		IF (localcount>1) THEN
+		if (localcount>1) then
 			call new_point(y0,iccounter,sample_table, ic)
 			
 			Y=Y0
@@ -159,19 +125,19 @@ do1: 	DO WHILE (successlocal<points)
 			T=T0
 			ITASK = 1
 			!Reinitialize integrator.
-			CALL FCVREINIT(T0, Y0, IATOL, RTOL, ATOL, IER)			
-		END IF
+			call FCVREINIT(T0, Y0, IATOL, RTOL, ATOL, IER)			
+		end if
 		
 		success = 0
 		iccounter = iccounter + 1
 	
 		!Perform the integration.
 		iend=3000000
-	do3:	DO i=1,iend
+	do3:	do i=1,iend
 
 			!*********************************
 			!Perform the integration.
-			CALL FCVODE(TOUT,T,Y,ITASK,IER)
+			call FCVODE(TOUT,T,Y,ITASK,IER)
 			dt=1D4
 			TOUT = TOUT + dt
 			!*********************************
@@ -183,18 +149,18 @@ do1: 	DO WHILE (successlocal<points)
 			if (leave) exit do3
 			
 			!Tells if not enough time for fields to evolve.
-			IF (i==iend) THEN
+			if (i==iend) then
 				errorlocal = errorlocal + 1
 				if (printing) print*, "Error: field didn't reach minima."
-			END IF
-			IF(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
-		END DO do3
+			end if
+			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
+		end do do3
 
 		!Check if the integrator isn't finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing)
 		if (allfailcheck) exit do1
 
-	END DO do1
+	end do do1
 
 	!Halts processors here.
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
@@ -213,7 +179,7 @@ do1: 	DO WHILE (successlocal<points)
 	if(rank==0) call hybrid_finalstats(ic, counter, failcount, &
 			&badfieldcounter, errorcount, printing)
 
-	!Clean up.
+	!Clean up integrator.
 	call FCVFREE
 
 	!End parallel.
@@ -222,36 +188,16 @@ do1: 	DO WHILE (successlocal<points)
 	!Why this is necessary I have no idea.  It works fine without it on my computer, but MPI gives an error if this isn't here on the cluster.
 	stop
 
-END PROGRAM hybrid_integrator_d
+end program hybrid_integrator_d
 
 
-
-
-!**************************************************************************************
-
-
-SUBROUTINE init_random_seed1(rank)
-            INTEGER :: i, n, clock
-            INTEGER, DIMENSION(:), ALLOCATABLE :: seed
-		INTEGER, INTENT(IN) :: rank
-          
-            CALL RANDOM_SEED(size = n)
-            ALLOCATE(seed(n))
-          
-            CALL SYSTEM_CLOCK(COUNT=clock)
-          
-            seed = clock + 37*rank* (/ (i - 1, i = 1, n) /)
-            CALL RANDOM_SEED(PUT = seed)
-          
-            DEALLOCATE(seed)
-END SUBROUTINE
 
 
 !***********************************************************************
 !RHS of equation to integrate.
 !***********************************************************************
-SUBROUTINE FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
-IMPLICIT NONE
+subroutine FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
+implicit none
 	
 	!******************
 	double precision, intent(in) :: Y(*), t
@@ -289,7 +235,7 @@ IMPLICIT NONE
 	D_phi_D_psi_V = (4D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*Y(2)*Y(3))/&
 		&(RPAR(4)*RPAR(4)*RPAR(4)*RPAR(4))
 
-	Hub = SQRT(RPAR(5)*(.5D0*((Y(4)*Y(4)) + (Y(5)*Y(5))) + V))
+	Hub = sqrt(RPAR(5)*(.5D0*((Y(4)*Y(4)) + (Y(5)*Y(5))) + V))
 
 	
  	!Equations of motion.
@@ -302,13 +248,13 @@ IMPLICIT NONE
 	!Success
 	IER = 0
 
-END SUBROUTINE FCVFUN
+end subroutine FCVFUN
 
 !***************************************************************************
 !Jacobian of RHS of equation to integrate.
-SUBROUTINE FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
+subroutine FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
 			&WK1, WK2, WK3, IER)
-IMPLICIT NONE
+implicit none
 
 	!**************************
 	double precision, intent(in) :: Y(*), FY(*), T, H
@@ -376,7 +322,7 @@ IMPLICIT NONE
 	!Success
 	IER = 0
 
-END SUBROUTINE FCVDJAC
+end subroutine FCVDJAC
 
 
 
