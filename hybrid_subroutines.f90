@@ -52,35 +52,35 @@ implicit none
 	end if
 
 
-	OPEN(unit=u,status='new',file='info.200')
-	if(printing) PRINT*, "Hybrid Inflation -- Homogeneous"
-	WRITE(unit=u,fmt=*) "Hybrid Inflation -- Homogeneous"
-	IF (IC == 1) THEN
-		if(printing) PRINT*,"ZERO VELOCITY SLICE"
-		WRITE(unit=u,fmt=*) "ZERO VELOCITY SLICE"
-	ELSE IF (IC == 2) THEN
-		if(printing) PRINT*,"EQUAL ENERGY SLICE"
-		WRITE(unit=u,fmt=*) "EQUAL ENERGY SLICE"
-	ELSE IF (IC == 3) THEN
-		if(printing) PRINT*,"2D SLICING OF EQEN SLICE"
-                WRITE(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
-	ELSE IF (IC == 4) THEN
-		if(printing) PRINT*,"IC FROM METROPOLIS SAMPLING"
-                WRITE(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
-	END IF
+	open(unit=u,status='new',file='info.200')
+	if(printing) print*, "Hybrid Inflation -- Homogeneous"
+	write(unit=u,fmt=*) "Hybrid Inflation -- Homogeneous"
+	if (IC == 1) then
+		if(printing) print*,"ZERO VELOCITY SLICE"
+		write(unit=u,fmt=*) "ZERO VELOCITY SLICE"
+	else if (IC == 2) then
+		if(printing) print*,"EQUAL ENERGY SLICE"
+		write(unit=u,fmt=*) "EQUAL ENERGY SLICE"
+	else if (IC == 3) then
+		if(printing) print*,"2D SLICING OF EQEN SLICE"
+                write(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
+	else if (IC == 4) then
+		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
+                write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
+	end if
 
-	if(printing) PRINT*,"Planck mass is ",m_planck
-	WRITE(unit=u,fmt=*) "Planck mass is ",m_planck
-	if(printing) PRINT*,"E=",energy_scale
-	WRITE(unit=u,fmt=*) "E=",energy_scale
-	if(printing) PRINT*,"Lambda is ",lambda
-	WRITE(unit=u,fmt=*) "Lambda is ",lambda
-       	if(printing) PRINT*,"M is ",M
-	WRITE(unit=u,fmt=*) "M is ",M
-       	if(printing) PRINT*,"mu is ",mu
-	WRITE(unit=u,fmt=*) "mu is ",mu
-       	if(printing) PRINT*,"nu is ",nu
-	WRITE(unit=u,fmt=*) "nu is ",nu
+	if(printing) print*,"Planck mass is ",m_planck
+	write(unit=u,fmt=*) "Planck mass is ",m_planck
+	if(printing) print*,"E=",energy_scale
+	write(unit=u,fmt=*) "E=",energy_scale
+	if(printing) print*,"Lambda is ",lambda
+	write(unit=u,fmt=*) "Lambda is ",lambda
+       	if(printing) print*,"M is ",M
+	write(unit=u,fmt=*) "M is ",M
+       	if(printing) print*,"mu is ",mu
+	write(unit=u,fmt=*) "mu is ",mu
+       	if(printing) print*,"nu is ",nu
+	write(unit=u,fmt=*) "nu is ",nu
 
 end subroutine hybrid_initstats
 
@@ -101,28 +101,28 @@ implicit none
 	end if
 
 	ratio=DBLE(counter)/DBLE(counter+failcount)
-	IF (IC == 1) THEN
-		if(printing) PRINT*,"ZERO VELOCITY SLICE"
-		WRITE(unit=u,fmt=*) "ZERO VELOCITY SLICE"
-	ELSE IF (IC == 2) THEN
-		if(printing) PRINT*,"EQUAL ENERGY SLICE"
-		WRITE(unit=u,fmt=*) "EQUAL ENERGY SLICE"
-	ELSE IF (IC==3) THEN
-		if(printing) PRINT*, "2D SLICING OF EQEN SLICE."
-		WRITE(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
-	ELSE IF (IC == 4) THEN
-		if(printing) PRINT*,"IC FROM METROPOLIS SAMPLING"
-                WRITE(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
-	END IF
-	if(printing) PRINT*,"Number of succ points ",counter,&
+	if (IC == 1) then
+		if(printing) print*,"ZERO VELOCITY SLICE"
+		write(unit=u,fmt=*) "ZERO VELOCITY SLICE"
+	else if (IC == 2) then
+		if(printing) print*,"EQUAL ENERGY SLICE"
+		write(unit=u,fmt=*) "EQUAL ENERGY SLICE"
+	else if (IC==3) then
+		if(printing) print*, "2D SLICING OF EQEN SLICE."
+		write(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
+	else if (IC == 4) then
+		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
+                write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
+	end if
+	if(printing) print*,"Number of succ points ",counter,&
 		&"Number of fail points ",failcount," ratio ",ratio
-	WRITE(unit=u,fmt=*) "Number of succ points ",counter,&
+	write(unit=u,fmt=*) "Number of succ points ",counter,&
 		&"Number of fail points ",failcount," ratio ",ratio
-	if(printing) PRINT*,"Number of IC that gave bad field values ",badfieldcounter
-	WRITE(unit=u,fmt=*)"Number of IC that gave bad field values",&
+	if(printing) print*,"Number of IC that gave bad field values ",badfieldcounter
+	write(unit=u,fmt=*)"Number of IC that gave bad field values",&
 		&badfieldcounter
-	if(printing) PRINT*,"Number that didn't fall into minimum ",errorcount
-	WRITE(unit=u,fmt=*) "Number that didn't fall into minimum ",errorcount
+	if(printing) print*,"Number that didn't fall into minimum ",errorcount
+	write(unit=u,fmt=*) "Number that didn't fall into minimum ",errorcount
 
 
 end subroutine hybrid_finalstats
@@ -231,8 +231,8 @@ implicit none
 
 	!Set params for FCVODE.
 	CALL FNVINITS(1, NEQ, IER)
-		IF (IER .NE. 0) THEN
-			PRINT*, ' SUNDIALS_ERROR: FNVINITS returned IER = ', IER
+		if (IER .NE. 0) then
+			print*, ' SUNDIALS_ERROR: FNVINITS returned IER = ', IER
 			STOP
 		ENDIF
 	IATOL = 2

@@ -203,13 +203,13 @@ implicit none
 	!******************
 	double precision, intent(in) :: Y(*), t
 	double precision, intent(inout) :: ydot(*)
-!	DOUBLE PRECISION :: Y(*), YDOT(*), T
-	INTEGER, intent(in) :: IPAR(*)
+!	double precision :: Y(*), YDOT(*), T
+	integer, intent(in) :: IPAR(*)
 	integer, intent(out) :: IER
-	DOUBLE PRECISION, intent(in) :: RPAR(*)
+	double precision, intent(in) :: RPAR(*)
 	!******************
 
-	DOUBLE PRECISION :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
+	double precision :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
 
 
 	!Potential and its derivatives.
@@ -262,13 +262,11 @@ implicit none
 	integer, intent(in) :: IPAR(*), NEQ
 	integer, intent(out) :: IER
 	double precision, intent(inout) :: DJAC(NEQ,*)
-!	DOUBLE PRECISION :: Y(*), FY(*), DJAC(NEQ,*), T, H
-!	INTEGER :: IPAR(*), NEQ, IER
-	DOUBLE PRECISION, intent(in) :: RPAR(*)
-	DOUBLE PRECISION, intent(in) :: WK1(*), WK2(*), WK3(*)
+	double precision, intent(in) :: RPAR(*)
+	double precision, intent(in) :: WK1(*), WK2(*), WK3(*)
 	!**************************
 
-	DOUBLE PRECISION :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
+	double precision :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
 
 	!Potential, V, and its derivatives.
 	V = (RPAR(1)**4D0)*((1D0 - ((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))**2D0 +&
