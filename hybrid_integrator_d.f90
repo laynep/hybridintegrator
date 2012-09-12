@@ -163,7 +163,7 @@ do1: 	do while (successlocal<points)
 			end if
 			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
 		end do do3
-		
+
 		!Print the traj & delete O(2n).
 		if (traj) call print_del_traj(ytraj_head, ytraj_tail, trajnumb)
 
@@ -172,6 +172,7 @@ do1: 	do while (successlocal<points)
 		if (allfailcheck) exit do1
 
 	end do do1
+
 
 	!Halts processors here.
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
