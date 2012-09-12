@@ -37,6 +37,34 @@ implicit none
 
 end subroutine open_hybridfiles
 
+!Opens files for storing the trajectories.
+subroutine open_trajfiles(rank, trajnumb, datatype, formt)
+implicit none
+
+	integer, intent(in) :: rank
+	integer, intent(out) :: trajnumb
+	character(len=12) :: trajname
+	character(len=*), optional, intent(inout) :: datatype, formt
+	
+	!Write to file.
+	trajnumb=3141+rank
+
+	!Create the file name.
+	if (present(datatype)) then
+		write(trajname,'(a,i4.4,a)')'traj',trajnumb,datatype
+	else
+		write(trajname,'(a,i4.4,a)')'traj',trajnumb,'.bin'
+	end if
+
+	!Open.
+	if (present(formt)) then
+		open(unit=trajnumb,status='new',file=trajname, form=formt)
+	else
+		open(unit=trajnumb,status='new',file=trajname, form='unformatted')
+	end if
+
+end subroutine open_trajfiles
+
 subroutine hybrid_initstats(ic,printing,infounit)
 implicit none
 	
@@ -161,7 +189,6 @@ implicit none
 	double precision :: V, check
 	logical, intent(in) :: printing
 
-
 	!Potential function.
 	V = V_h(Y)
 	
@@ -275,7 +302,92 @@ implicit none
 end subroutine all_fail_check
 
 
+!Subroutine to record the trajectory.
+subroutine rec_traj(Y, head, tail)
+use linked_list
+implicit none
+
+	double precision, dimension(:), intent(in) :: Y
+	type(llnode), pointer, intent(inout) :: head, tail
+	type(llnode), pointer :: new
+
+	!Make a node out of the array Y
+	call ll_make(new,Y)
+
+	!Append new node to list.
+	call ll_append(new,head, tail)
+
+end subroutine rec_traj
+
+subroutine print_del_traj(head, tail, numb)
+use linked_list
+implicit none
+
+	type(llnode), pointer, intent(inout) :: head, tail
+	type(llnode), pointer :: move
+	integer, intent(in) :: numb
+	integer :: i
+
+	!Write to file.
+	!Check if list is empty.
+	if (.not. associated(head)) then
+		print*, "The list is empty."
+	else
+		move=>head
+		do
+			if (allocated(move%a)) then
+				write(unit=numb),(move%a(i),i=1,size(move%a))
+			end if
+			move=>move%next
+			if (.not. associated(move)) exit
+		end do
+	end if
+	!Delete the list.
+	call ll_del_all(head,tail)
+
+
+end subroutine print_del_traj
+
+
+
+
+
+
 end module hybrid_subroutines
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

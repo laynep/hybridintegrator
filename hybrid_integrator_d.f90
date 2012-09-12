@@ -18,6 +18,7 @@ use d_hybrid_initialconditions
 use hybrid_subroutines
 use rng
 use mpi
+use linked_list
 implicit none
 
 	integer:: i,j, points, success, counter, iccounter, sucunit,&
@@ -26,11 +27,12 @@ implicit none
 	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
 		& errorlocal, ierr, rc
 	integer :: numtasks, rank
-	integer :: ic
+	integer :: ic, trajnumb
 	double precision :: check, v, ratio, dt
 	double precision :: v_0
 	double precision, dimension(:,:), allocatable :: sample_table
-	logical :: leave, allfailcheck, printing
+	logical :: leave, allfailcheck, printing, traj
+	type(llnode), pointer :: ytraj_head, ytraj_tail
 
 	!*****************************
 	!FCVODE PARAMS
@@ -42,10 +44,10 @@ implicit none
 	double precision :: t0, y0(5), t, tout, rtol, atol(5)
 	!*****************************
 
-	namelist /ics/ points, IC, printing
+	namelist /ics/ points, IC, dt, printing, traj
 
 	!Read numb of (data points per numb of processes) & IC type from file.
-	!Do we want to print to stdout?
+	!Do we want to print to stdout?  Do we want to record the trajectory?
 	open(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
 	read(unit=10000, nml=ics)
 	close(unit=10000)
@@ -76,8 +78,9 @@ implicit none
 	if(printing) print*,'Number of tasks=',numtasks,' My rank=',rank
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
-	!Opens success and fail files.
+	!Opens success and fail files. Optionally traj files.  Defaults to unform binary.
 	call open_hybridfiles(rank,numtasks,sucunit,failunit)
+	if (traj) call open_trajfiles(rank, trajnumb)
 
 	!Set potential parameters.
 	call parameters_hybrid()
@@ -91,6 +94,9 @@ implicit none
 	!Set some params for FCVODE integrator.
 	call set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout)
+
+	!If recording trajs, then initialize linked list.
+	if (traj) call ll_init(ytraj_head,ytraj_tail)
 
 	!Set IC.
 	if (IC == 1) then
@@ -135,11 +141,12 @@ do1: 	do while (successlocal<points)
 		!Perform the integration.
 		iend=3000000
 	do3:	do i=1,iend
+			!Take field values if recording trajectory. Previously initialized
+			if (traj) call rec_traj(Y, ytraj_head, ytraj_tail)
 
 			!*********************************
-			!Perform the integration.
+			!Perform the integration. dt set in namelist ics.
 			call FCVODE(TOUT,T,Y,ITASK,IER)
-			dt=1D4
 			TOUT = TOUT + dt
 			!*********************************
 
@@ -156,6 +163,9 @@ do1: 	do while (successlocal<points)
 			end if
 			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
 		end do do3
+		
+		!Print the traj & delete O(2n).
+		if (traj) call print_del_traj(ytraj_head, ytraj_tail, trajnumb)
 
 		!Check if the integrator isn't finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing)
@@ -203,7 +213,6 @@ implicit none
 	!******************
 	double precision, intent(in) :: Y(*), t
 	double precision, intent(inout) :: ydot(*)
-!	double precision :: Y(*), YDOT(*), T
 	integer, intent(in) :: IPAR(*)
 	integer, intent(out) :: IER
 	double precision, intent(in) :: RPAR(*)
