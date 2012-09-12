@@ -14,7 +14,7 @@
 	lambda = 6.8D-3,
 	energy_scale = 1D3/
 &ics
-	points=1,
+	points=2,
 	IC=2,
 	dt=1D5,
 	printing=.true.,
