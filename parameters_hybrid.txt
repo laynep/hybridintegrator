@@ -16,7 +16,7 @@
 &ics
 	points=10,
 	IC=2,
-	dt=1D6,
+	dt=5D6,
 	printing=.true.,
 	traj=.false.
 /

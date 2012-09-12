@@ -42,16 +42,6 @@ implicit none
 	integer, dimension(:,:), allocatable :: numbpoints_sample
 	integer :: xxglobal_fail, xxglobal_succ
 
-	!from clesse.
-!	double precision, parameter :: m_min = .049787068d0*m_planck
-!	double precision, parameter :: m_max = .932239382d0*m_planck
-!	double precision, parameter :: mu_min = 0.367879441d0*m_planck
-!	double precision, parameter :: mu_max = 54.598150033d0*m_planck
-!	double precision, parameter :: nu_min = 0.22313016*m_planck
-!	double precision, parameter :: nu_max = 2.718281828*m_planck
-!	double precision, parameter :: lambda_min = -2d0*m_planck
-!	double precision, parameter :: lambda_max = 2d0*m_planck
-
 	namelist /parameters/ m, mu, nu, lambda, energy_scale
 
 contains
@@ -91,82 +81,55 @@ subroutine D_IC_EQEN(Y,iccounter)
 implicit none
 	double precision, intent(out) :: Y(5)
 	integer, intent(in) :: iccounter
-	double precision :: rand_1, rand_2, rand_3, rand_4,rand_5, V_0, rho_kinetic, phi_dot_min, phi_dot_max, psi_dot_min, psi_dot_max
-	integer :: param_constr
+	double precision :: rand, rho_kinetic, dot_min, dot_max
+	integer :: param_constr, a, b
 
 	!Gives parameter to set by energy constraint: 0~phi_dot,1~psi_dot.  The IC for iccounter equals number of parameters to oscillate between.
 	param_constr = MOD(iccounter,2)
-	
 	if (param_constr==0) then
-		do
-			!Set phi from energy constraint.
-			call random_number(rand_1)
-			Y(2)= (rand_1*(phi_max-phi_min)) + phi_min
-			phi_0 = Y(2)
-			!IC for Y(3)~psi randomly in range psi_min to psi_max.
-			call random_number(rand_2)
-			Y(3)= (rand_2*(psi_max-psi_min)) + psi_min
-			psi_0 = Y(3)	
-			!Initial value of the potential.
-			V_0 = V_h(Y)	
-			!Energy density remaining in kinetic term.
-			rho_kinetic = (energy_scale**4D0) - V_0
-			if (rho_kinetic<0) cycle 			
-			!Set so that psi_dot is chosen with flat prior.
-			psi_dot_max = SQRT(2D0*rho_kinetic)
-			psi_dot_min = -1D0*SQRT(2D0*rho_kinetic)	
-			!Sets the psi_dot IC to the range psi_dot_max to psi_dot_min
-			call random_number(rand_3)
-			Y(5) = (rand_3*(psi_dot_max-psi_dot_min)) + psi_dot_min
-			psi_dot_0 = Y(5)	
-			if(2D0*rho_kinetic - (Y(5)*Y(5)) > 0) exit	
-		end do
-	
-		!Set the phi_dot IC by the total energy density constraint.
-		call random_number(rand_4)
-		if(rand_4 < .5) then
-			Y(4) = SQRT(2D0*rho_kinetic - (Y(5)*Y(5)))
-			phi_dot_0 = Y(4)
-		else 
-			Y(4) = -1D0*SQRT(2E0*rho_kinetic - (Y(5)*Y(5)))
-			phi_dot_0 = Y(4)
-		end if	
-	elseif (param_constr==1) then
-		do
-			!IC for Y(2)~phi randomly in range phi_min to phi_max.
-			call random_number(rand_1)
-			Y(2)= (rand_1*(phi_max-phi_min)) + phi_min
-			phi_0 = Y(2)	
-			!IC for Y(3)~psi randomly in  range psi_min to psi_max.
-			call random_number(rand_2)
-			Y(3)= (rand_2*(psi_max-psi_min)) + psi_min
-			psi_0 = Y(3)	
-			!Initial value of the potential.
-			V_0 = V_h(Y)	
-			!Energy density remaining in kinetic term.
-			rho_kinetic = (energy_scale**4D0) - V_0
-			if (rho_kinetic<0) cycle 	
-			!Set so that phi_dot is chosen with flat prior.
-			phi_dot_max = SQRT(2D0*rho_kinetic)
-			phi_dot_min = -1D0*SQRT(2D0*rho_kinetic)	
-			!Sets the phi_dot IC to the range phi_dot_max to phi_dot_min
-			call random_number(rand_3)
-			Y(4) = (rand_3*(phi_dot_max-phi_dot_min)) + phi_dot_min
-			phi_dot_0 = Y(4)	
-		if(2D0*rho_kinetic - (Y(4)*Y(4)) > 0) exit	
-		end do
-	
-		call random_number(rand_5)
-		if(rand_5<.5)then
-			!Set the psi_dot IC by the total energy density constraint.
-			Y(5) = SQRT(2D0*rho_kinetic - (Y(4)*Y(4)))
-			psi_dot_0 = Y(5)
-		else
-			!Set the psi_dot IC by the total energy density constraint.
-			Y(5) = -SQRT(2D0*rho_kinetic - (Y(4)*Y(4)))
-			psi_dot_0 = Y(5)
-		end if
+		a=5
+		b=4
+	else
+		a=4
+		b=5
 	end if
+
+	do
+		!Set phi from energy constraint.
+		call random_number(rand)
+		Y(2)= (rand*(phi_max-phi_min)) + phi_min
+
+		!IC for Y(3)~psi randomly in range psi_min to psi_max.
+		call random_number(rand)
+		Y(3)= (rand*(psi_max-psi_min)) + psi_min
+	
+		!Energy density remaining in kinetic term.
+		rho_kinetic = (energy_scale**4D0) - V_h(Y)
+		if (rho_kinetic<0) cycle
+		!Set so that psi_dot is chosen with flat prior.
+		dot_max = SQRT(2D0*rho_kinetic)
+		dot_min = -1D0*SQRT(2D0*rho_kinetic)	
+		!Sets the psi_dot IC to the range psi_dot_max to psi_dot_min
+		call random_number(rand)
+		Y(a) = (rand*(dot_max-dot_min)) + dot_min
+	
+		if(2D0*rho_kinetic - (Y(a)*Y(a)) > 0) exit	
+	end do
+		
+	!Set the phi_dot IC by the total energy density constraint.
+	call random_number(rand)
+	if(rand < .5) then
+		Y(b) = SQRT(2D0*rho_kinetic - (Y(a)*Y(a)))
+	else 
+		Y(b) = -1D0*SQRT(2E0*rho_kinetic - (Y(a)*Y(a)))
+	end if	
+
+	!Set initial conditions.
+	phi_0 = Y(2)
+	psi_0 = Y(3)
+	psi_dot_0 = Y(5)
+	phi_dot_0 = Y(4)
+
 
 	!Reinitialize the e-fold value: Y(1)~N.
 	Y(1)=0D0 		
@@ -513,11 +476,12 @@ doi:		do i=1,n
 end subroutine ic_metr
 
 
-!Subroutine that initializes the IC_METR routine.  This loads the sample_table from a file and does a burn in period.
-subroutine ic_metr_init(y, iccounter, sample_table, bperiod)
+!Subroutine that initializes the IC_METR routine.  This loads the sample_table from a file and does a burn in period.  Eps is the size of the coarse-graining for the interpolant.
+subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 implicit none
 
 	double precision, dimension(:), intent(out) :: y
+	double precision, optional, intent(inout) :: eps
 	integer, intent(inout) :: iccounter
 	integer, optional, intent(in) :: bperiod
 	double precision, dimension(:,:), allocatable, intent(out) :: sample_table
@@ -557,7 +521,11 @@ implicit none
 	do i=1, iend
 		!Get new IC from sample_table.
 		iccounter=iccounter+1
-		call IC_METR(Y,sample_table,iccounter)
+		if (present(eps)) then
+			call IC_METR(Y,sample_table,iccounter,eps)
+		else
+			call IC_METR(Y,sample_table,iccounter)
+		end if
 	end do
 
 end subroutine ic_metr_init

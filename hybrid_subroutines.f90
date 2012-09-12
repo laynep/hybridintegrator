@@ -160,7 +160,8 @@ subroutine new_point(y0,iccounter,sample_table,ic)
 implicit none
 
 	double precision, dimension(:), intent(inout) :: y0
-	integer, intent(inout) :: iccounter, ic
+	integer, intent(inout) :: iccounter
+	integer, intent(in) :: ic
 	double precision, dimension(:,:), allocatable, intent(inout) :: sample_table
 
 
@@ -189,17 +190,14 @@ implicit none
 	double precision :: V, check
 	logical, intent(in) :: printing
 
-	!Potential function.
-	V = V_h(Y)
-	
 	!Check if  fields fell into minima (if engy dnsty <
 	! dnsty at infl end)
 	check = (.5D0*( (Y(4)*Y(4)) + (Y(5)*Y(5))) &
-		&+V - (lambda*lambda*lambda*lambda))
+		&+V_h(Y) - (lambda*lambda*lambda*lambda))
 
 	!Gives a 1 if inflation is successful.
 	leave = .false.
-	if (Y(1)>65) then
+	if (Y(1)>65D0) then
 		success = 1
 		successlocal = successlocal + 1
 		if (IC==1) then
@@ -231,7 +229,7 @@ end subroutine succ_or_fail
 
 
 subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
-		& meth, itmeth, t0, t, itask, tout)
+		& meth, itmeth, t0, t, itask, tout, dt)
 implicit none
 
 	!FCVODE PARAMS
@@ -240,9 +238,10 @@ implicit none
 	integer(kind=8), intent(out) :: NEQ, NGLOBAL
 	integer, intent(out) :: IATOL, ITASK
 	double precision, intent(out) :: T0, T, TOUT, RTOL, ATOL(5)
+	double precision, intent(in) :: dt
 
 	!Other params
-	integer, intent(in) :: numtasks	
+	integer, intent(in) :: numtasks
 	integer :: ier
 
 	!Pass params to FCVODE subroutines.  Errors if don't do this...?
@@ -270,7 +269,7 @@ implicit none
 	T0=0D0
 	T=T0
 	ITASK = 1
-	TOUT = 1D1
+	TOUT = dt
 
 end subroutine set_paramsFCVODE
 

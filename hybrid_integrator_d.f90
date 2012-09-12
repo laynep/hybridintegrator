@@ -93,7 +93,7 @@ implicit none
 
 	!Set some params for FCVODE integrator.
 	call set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
-		& meth, itmeth, t0, t, itask, tout)
+		& meth, itmeth, t0, t, itask, tout, dt)
 
 	!If recording trajs, then initialize linked list.
 	if (traj) call ll_init(ytraj_head,ytraj_tail)
@@ -124,10 +124,11 @@ do1: 	do while (successlocal<points)
 		!Get new point if on second or greater run.
 		if (localcount>1) then
 			call new_point(y0,iccounter,sample_table, ic)
+
 			!Reinit time and Y
 			Y=Y0
 			T0=0D0
-			TOUT = 1D1
+			TOUT = dt
 			T=T0
 			!Reinitialize integrator.
 			ITASK = 1
@@ -213,7 +214,7 @@ implicit none
 	
 	!******************
 	double precision, intent(in) :: Y(*), t
-	double precision, intent(inout) :: ydot(*)
+	double precision, intent(out) :: ydot(*)
 	integer, intent(in) :: IPAR(*)
 	integer, intent(out) :: IER
 	double precision, intent(in) :: RPAR(*)
