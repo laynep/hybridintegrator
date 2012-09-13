@@ -311,37 +311,37 @@ end subroutine all_fail_check
 
 
 !Subroutine to record the trajectory.
-subroutine rec_traj(Y, head, tail)
+subroutine rec_traj(Y, list)
 use linked_list
 implicit none
 
 	double precision, dimension(:), intent(in) :: Y
-	type(llnode), pointer, intent(inout) :: head, tail
+	type(linkedlist)  :: list
 	type(llnode), pointer :: new
 
 	!Make a node out of the array Y
 	call ll_make(new,Y)
 
 	!Append new node to list.
-	call ll_append(new,head, tail)
+	call ll_append(new,list)
 
 end subroutine rec_traj
 
-subroutine print_del_traj(head, tail, numb)
+subroutine print_del_traj(list, numb)
 use linked_list
 implicit none
 
-	type(llnode), pointer, intent(inout) :: head, tail
+	type(linkedlist), intent(inout) :: list
 	type(llnode), pointer :: move
 	integer, intent(in) :: numb
 	integer :: i
 
 	!Write to file.
 	!Check if list is empty.
-	if (.not. associated(head)) then
+	if (.not. associated(list%head)) then
 		print*, "The list is empty."
 	else
-		move=>head
+		move=>list%head
 		do
 			if (allocated(move%a)) then
 				write(unit=numb),(move%a(i),i=1,size(move%a))
@@ -351,7 +351,7 @@ implicit none
 		end do
 	end if
 	!Delete the list.
-	call ll_del_all(head,tail)
+	call ll_del_all(list)
 
 
 end subroutine print_del_traj

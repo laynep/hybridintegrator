@@ -36,7 +36,7 @@ implicit none
 	!Variables to load IC from file for direct read or interpolation (ic=4,5)
 	double precision, dimension(:,:), allocatable :: sample_table, ic_table
 	!List to record trajectory.
-	type(llnode), pointer :: ytraj_head, ytraj_tail
+	type(linkedlist) :: ytraj
 	!Parallel variables.
 	integer :: numtasks, rank
 	!FCVODE params
@@ -101,9 +101,6 @@ implicit none
 	call set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout, dt)
 
-	!If recording trajs, then initialize linked list.
-	if (traj) call ll_init(ytraj_head,ytraj_tail)
-
 	!Set first IC.
 	if (IC == 1) then
 		call D_IC_ZEROV(Y0)
@@ -151,7 +148,7 @@ do1: 	do while (integr_ch)
 		iend=3000000
 	do3:	do i=1,iend
 			!Take field values if recording trajectory. Previously initialized
-			if (traj) call rec_traj(Y, ytraj_head, ytraj_tail)
+			if (traj) call rec_traj(Y, ytraj)
 
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
@@ -174,7 +171,7 @@ do1: 	do while (integr_ch)
 		end do do3
 
 		!Print the traj & delete -- O(2n).
-		if (traj) call print_del_traj(ytraj_head, ytraj_tail, trajnumb)
+		if (traj) call print_del_traj(ytraj, trajnumb)
 
 		!Check if the integrator isn't finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing)
