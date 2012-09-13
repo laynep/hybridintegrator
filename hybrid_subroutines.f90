@@ -4,6 +4,7 @@ implicit none
 
 contains
 
+!Open the files to write the successful and failure points to for each thread.
 subroutine open_hybridfiles(rank,numtasks,sucunit,failunit, datatype, formt)
 implicit none
 
@@ -65,6 +66,7 @@ implicit none
 
 end subroutine open_trajfiles
 
+!Print the initial stats to file info.200.
 subroutine hybrid_initstats(ic,printing,infounit)
 implicit none
 	
@@ -115,6 +117,7 @@ implicit none
 
 end subroutine hybrid_initstats
 
+!Print the final stats to info.200.
 subroutine hybrid_finalstats(ic, counter, failcount, badfieldcounter, &
 		& errorcount, printing,  infounit)
 implicit none
@@ -161,11 +164,13 @@ implicit none
 
 end subroutine hybrid_finalstats
 
-
-subroutine new_point(y0,iccounter,sample_table,ic, ic_table)
+!Get a new point with method specified by "IC."
+subroutine new_point(y0,iccounter,sample_table,ic, ic_table, yref, toler)
 implicit none
 
 	double precision, dimension(:), intent(inout) :: y0
+	double precision, dimension(:), optional, intent(inout) :: yref
+	double precision, optional, intent(in) :: toler
 	integer, intent(inout) :: iccounter
 	integer, intent(in) :: ic
 	double precision, dimension(:,:), allocatable, intent(inout) :: sample_table
@@ -182,13 +187,13 @@ implicit none
 		call ic_metr(y0,sample_table,iccounter)
 	else if (ic==5) then
 		call ic_fromarray(y0,ic_table,iccounter+1)
+	else if (ic==6) then
+		call ic_eqen_pert(yref,y0,iccounter,euclidean,toler)
 	end if
 
 end subroutine new_point
 
-
-
-
+!Determine if an iteration of the integrator has reached a success or failure condition yet.  If it has, then this routine returns "leave=.true." -- an exit condition for the loop in the main program.
 subroutine succ_or_fail(Y, success, successlocal, faillocal, &
 		&sucunit, failunit, ic, leave, printing)
 implicit none
@@ -236,7 +241,7 @@ implicit none
 
 end subroutine succ_or_fail
 
-
+!Set some necessary parameters for the integrator FCVODE.
 subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout, dt)
 implicit none
@@ -310,7 +315,7 @@ implicit none
 end subroutine all_fail_check
 
 
-!Subroutine to record the trajectory.
+!Subroutine to record the trajectory in a linked list..
 subroutine rec_traj(Y, list)
 use linked_list
 implicit none
@@ -327,6 +332,7 @@ implicit none
 
 end subroutine rec_traj
 
+!Prints the linked list and then deletes it.
 subroutine print_del_traj(list, numb)
 use linked_list
 implicit none
@@ -355,6 +361,37 @@ implicit none
 
 
 end subroutine print_del_traj
+
+!Subroutine which will initialize the zoom-in technique.  Finds a reference point from namelist and returns one point on the equal energy surface, a distance "tol" away from yref.  Uses the Euclidean metric on field space.
+subroutine ic_zoom_init(y0, yref, iccounter, toler)
+implicit none
+
+	double precision, dimension(:), intent(inout) :: y0, yref
+	double precision, intent(inout) :: toler
+	integer, intent(inout) :: iccounter
+
+	namelist / zoom / yref, toler
+
+	!Read the reference point "yref" and tolerance "toler" from file.
+	open(unit=1002, file="parameters_hybrid.txt", status="old",&
+	& delim = "apostrophe")
+	read(unit=1002, nml=zoom)
+	close(unit=1002)
+
+	!Get a new point on eq en slice a dist "toler" away from yref.
+	call ic_eqen_pert(yref,y0,iccounter,euclidean,toler)
+
+end subroutine ic_zoom_init
+
+!Euclidean metric.
+pure double precision function euclidean(pt1,pt2)
+implicit none
+
+	double precision, dimension(:), intent(in) :: pt1, pt2
+
+	euclidean=sqrt(sum((pt1-pt2)*(pt1-pt2)))
+
+end function euclidean
 
 
 

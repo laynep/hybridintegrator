@@ -22,6 +22,10 @@ use linked_list
 !use lyapunov_subroutines
 implicit none
 
+	!Main variables.
+	double precision, dimension(5) :: y, y0		!The fields.
+	double precision, dimension(5) :: yref		!Ref field for zooming proc.
+	double precision :: t0, t, tout, dt		!Timers.
 	!Counters & unit numbers
 	integer:: i,j, success, counter, iccounter, sucunit,&
 		& failunit, failcount, localcount
@@ -30,7 +34,7 @@ implicit none
 		& errorlocal, ierr, rc
 	!Program variables.
 	integer :: ic, trajnumb, points
-	double precision :: check, v, ratio, dt
+	double precision :: check, v, ratio, toler
 	logical :: leave, allfailcheck, printing, traj
 	logical :: integr_ch
 	!Variables to load IC from file for direct read or interpolation (ic=4,5)
@@ -40,12 +44,12 @@ implicit none
 	!Parallel variables.
 	integer :: numtasks, rank
 	!FCVODE params
-	double precision :: y(5), rpar(5)
+	double precision :: rpar(5)
 	integer :: ipar(5), meth, itmeth
 	real ::  rout(6)
 	integer(kind=8) :: neq, nglobal
 	integer :: ier, iatol, iout(21), itask
-	double precision :: t0, y0(5), t, tout, rtol, atol(5)
+	double precision :: rtol, atol(5)
 	!LESLIS params
 	
 	namelist /ics/ points, IC, dt, printing, traj
@@ -103,15 +107,23 @@ implicit none
 
 	!Set first IC.
 	if (IC == 1) then
+		!Zero vel slice.
 		call D_IC_ZEROV(Y0)
 	else if (IC == 2) then
+		!Eq energy slice.
 		call D_IC_EQEN(Y0,iccounter)
 	else if (IC==3) then
+		!Subslice of eq en slice.
 		call EQEN_SLICING(Y0)
 	else if (IC==4) then
+		!Metropolis sample a dataset.
 		call IC_METR_INIT(Y0, iccounter, sample_table, 10000)
 	else if (IC==5) then
+		!Read IC from a file.
 		call ic_file_init(y0, rank,numtasks,ic_table)
+	else if (IC==6) then
+		!Zoom in on one point on eq en surface.
+		call ic_zoom_init(y0, yref, iccounter, toler)
 	end if
 	Y=Y0
 
@@ -125,11 +137,12 @@ implicit none
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.
 do1: 	do while (integr_ch) 
-
+		!Count numb of times each thread goes through loop.
 		localcount = localcount + 1
 		!Get new point if on second or greater run.
 		if (localcount>1) then
-			call new_point(y0,iccounter,sample_table, ic, ic_table)
+			call new_point(y0,iccounter,sample_table, ic, &
+				&ic_table, yref, toler)
 
 			!Reinit time and Y
 			Y=Y0
@@ -178,9 +191,9 @@ do1: 	do while (integr_ch)
 		if (allfailcheck) exit do1
 
 		!Determine loop exit condition.
-		if (ic .ne. 5) then
+		if (ic<5 .or. ic==6) then
 			integr_ch=(successlocal<points)
-		else
+		else if (ic==5) then
 			integr_ch=(localcount<size(ic_table,1))
 		end if
 
@@ -189,7 +202,7 @@ do1: 	do while (integr_ch)
 
 	!Halts processors here.
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
-	!Gives slave data to master.
+	!Gives child data to master.
 	call MPI_REDUCE(badfieldlocal,badfieldcounter,1,MPI_INTEGER,&
 		&MPI_SUM,0,MPI_COMM_WORLD,ierr)
 	call MPI_REDUCE(successlocal,counter,1,MPI_INTEGER,&

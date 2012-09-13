@@ -138,7 +138,6 @@ end subroutine D_IC_EQEN
 
 !*********************************************************************************
 !Subroutine which will take one pt y0 and give another point y1 that is very close to it, but also on the equal energy slice.  
-!NOTE: this routine DOES NOT initialize the e-foldings to zero.  It is intended to be used with the Lyapunov integrator and thus should carry the value of e-folding with it.
 
 subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 implicit none
@@ -154,10 +153,9 @@ implicit none
 	end interface
 	double precision, optional, intent(in) :: en, sig
 	integer, intent(in) :: iccounter
-	double precision :: rand, v_0, rho_kinetic, e, tol, sgn
+	double precision :: rand, rho_kinetic, e, tol, sgn
 	integer :: param_constr, x, y, i
 	double precision, dimension(5) :: maxim, minim
-	double precision, dimension(4) :: a0, a1
 
 	!Set energy.
 	if (present(en)) then
@@ -173,8 +171,8 @@ implicit none
 	end if
 
 	!Set the max and min params.
-	maxim=(y0+tol/2D0)/4D0
-	minim=(y0-tol/2D0)/4D0
+	maxim=(y0+tol/2D0)
+	minim=(y0-tol/2D0)
 
 	!Initialize y1.
 	y1=y0
@@ -193,42 +191,36 @@ do1:	do
 			!set phi from energy constraint.
 			call random_number(rand)
 			y1(2)= (rand*(maxim(2)-minim(2))) + minim(2)
-			phi_0 = y1(2)
 			!ic for y(3)~psi randomly in range psi_min to psi_max.
 			call random_number(rand)
 			y1(3)= (rand*(maxim(3)-minim(3))) + minim(3)
-			psi_0 = y1(3)
-			!initial value of the potential.
-			v_0 = v_h(y1)
 			!energy density remaining in kinetic term.
-			rho_kinetic = (e**4) - v_0
+			rho_kinetic = (e**4) - v_h(y1)
 			if (rho_kinetic<0) cycle 
 			!sets the psi_dot ic to the range psi_dot_max to psi_dot_min
 			call random_number(rand)
 			y1(y) = (rand*(maxim(y)-minim(y))) + minim(y)
-			if (y==5) then
-				psi_dot_0 = y1(y)
-			else 
-				phi_dot_0 = y1(y)
-			end if
 			if(2d0*rho_kinetic - (y1(5)*y1(5)) > 0) exit do2
 		end do do2
 		!Set the phi_dot IC by the total energy density constraint.
 		sgn=y0(x)/abs(y0(x))
 		Y1(x) = sgn*sqrt(2D0*rho_kinetic - (Y1(y)*Y1(y)))
-		if (x==5) then
-			psi_dot_0 = y1(x)
-		else 
-			phi_dot_0 = y1(x)
-		end if
 		!Exit condition.
-		!Load vector.
-		do i=1, 4
-			a0(i) = y0(i+1)
-			a1(i) = y1(i+1)
-		end do
-		if (metric(a0,a1) .le. tol ) exit do1
+!print*,"tolerance",tol
+!print*,"distance",metric(y0(2:5),y1(2:5))
+		if (metric(y0(2:5),y1(2:5)) .le. tol ) exit do1
 	end do do1
+
+	!Set initial conditions.
+	phi_0 = Y1(2)
+	psi_0 = Y1(3)
+	psi_dot_0 = Y1(5)
+	phi_dot_0 = Y1(4)
+
+
+	!Reinitialize the e-fold value: Y(1)~N.
+	Y1(1)=0D0 		
+
 
 
 end subroutine ic_eqen_pert

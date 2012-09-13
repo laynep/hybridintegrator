@@ -5,6 +5,7 @@
 #	IC = 3		!IC as a slicing of EQEN slice.
 #	IC = 4		!IC from Metropolis Algorithm.
 #	IC = 5		!IC from a file.
+#	IC = 6		!IC sample zoomed on ! success point.
 #Points variable is the number of successful data points
 #per process, i.e. TotalPoints=points*numtasks.
 #
@@ -16,7 +17,7 @@
 	energy_scale = 1D3/
 &ics
 	points=10,
-	IC=5,
+	IC=6,
 	dt=1D6,
 	printing=.true.,
 	traj=.false.
@@ -32,3 +33,9 @@
 	fwid=4,
 	fform="unformatted"
 /
+&zoom
+	yref=0D0,93.188031799106000D0, 197.41870473385262D0, -1355404.4531420982D0, -403582.41835165431D0, !NOTE:   N,phi,psi,phi_dot,psi_dot
+	toler=1D-3
+/
+
+                        
