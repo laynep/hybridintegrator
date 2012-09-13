@@ -95,6 +95,9 @@ implicit none
 	else if (IC == 4) then
 		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
                 write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
+	else if (ic==5) then
+		if(printing) print*,"IC FROM FILE"
+                write(unit=u,fmt=*) "IC FROM FILE"
 	end if
 
 	if(printing) print*,"Planck mass is ",m_planck
@@ -141,6 +144,9 @@ implicit none
 	else if (IC == 4) then
 		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
                 write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
+	else if (ic==5) then
+		if(printing) print*,"IC FROM FILE"
+                write(unit=u,fmt=*) "IC FROM FILE"
 	end if
 	if(printing) print*,"Number of succ points ",counter,&
 		&"Number of fail points ",failcount," ratio ",ratio
@@ -156,13 +162,14 @@ implicit none
 end subroutine hybrid_finalstats
 
 
-subroutine new_point(y0,iccounter,sample_table,ic)
+subroutine new_point(y0,iccounter,sample_table,ic, ic_table)
 implicit none
 
 	double precision, dimension(:), intent(inout) :: y0
 	integer, intent(inout) :: iccounter
 	integer, intent(in) :: ic
 	double precision, dimension(:,:), allocatable, intent(inout) :: sample_table
+	double precision, dimension(:,:), optional, intent(in) :: ic_table
 
 
 	if (ic == 1) then
@@ -173,6 +180,8 @@ implicit none
 		call eqen_slicing(y0)
 	else if (ic==4) then
 		call ic_metr(y0,sample_table,iccounter)
+	else if (ic==5) then
+		call ic_fromarray(y0,ic_table,iccounter+1)
 	end if
 
 end subroutine new_point

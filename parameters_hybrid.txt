@@ -4,19 +4,20 @@
 #	IC = 2		!IC on eq energy slice.
 #	IC = 3		!IC as a slicing of EQEN slice.
 #	IC = 4		!IC from Metropolis Algorithm.
+#	IC = 5		!IC from a file.
 #Points variable is the number of successful data points
 #per process, i.e. TotalPoints=points*numtasks.
 #
 &parameters
-	m = 30D0,
+	m = .03D3,
 	mu = 500D3,
 	nu = .015D3,
 	lambda = 6.8D-3,
 	energy_scale = 1D3/
 &ics
 	points=10,
-	IC=2,
-	dt=5D6,
+	IC=5,
+	dt=1D6,
 	printing=.true.,
 	traj=.false.
 /
@@ -25,4 +26,9 @@
 	samp_wid=4,
 	datafile="datasample.bin"
 /
-
+&filetoread
+	fname="test0020.bin",
+	fleng=10,
+	fwid=4,
+	fform="unformatted"
+/

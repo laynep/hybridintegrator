@@ -618,9 +618,106 @@ implicit none
 
 end subroutine IC_TEST
 
+!Subroutine to open a file to read ICs from.  File has "length" x "dimn"-dimensional points, which are both passed as arguments to this routine.  Reads into temporary array from rank=0 (master), then scatters pieces to other threads in variable ic_table.
+subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, dimn)
+use mpi
+implicit none
+
+	double precision, dimension(:,:), allocatable :: mastertable, masttransp
+	double precision, dimension(:,:), allocatable, intent(out) :: ic_table
+	double precision, dimension(:,:), allocatable :: ic_transp
+	integer, intent(in) :: rank, numtasks, length, dimn
+	character(len=*), intent(in) :: fname, formt
+	integer :: i, j, n, low, receiv
+	integer :: ierr
+
+	!Make the ic_table for each thread.
+	!Find how many ICs to give to each thread.  Note, some will be lost bc
+	!I want to give each thread the same number of ICs.
+	n=length/numtasks	!Note int div.
+	allocate(ic_table(n,dimn),ic_transp(dimn,n))
+	allocate(mastertable(length,dimn),masttransp(dimn,length))
+
+	!Read ICs into mastertable by master thread.
+	!NOTE: we have to do the kludgy transpose mess, because the file we read from
+	!will be in row-major order and scatter works in column-major order for Fortran.
+	if (rank==0) then
+		!Read.
+		open(unit=2718281,file=fname,form=formt,status="old")
+		do i=1,length
+			read(2718281), (mastertable(i,j),j=1,dimn)
+		end do
+		close(2718281)
+		masttransp=transpose(mastertable)
+		deallocate(mastertable)
+	end if
+	!Scatter mastertransp to other threads.
+	call mpi_scatter(masttransp,n*dimn,mpi_double_precision,&
+	&ic_transp,n*dimn,mpi_double_precision,0, MPI_COMM_WORLD, ierr)
+
+	!Halt processors until master sends them ic_table.
+ 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+	!Get transpose of ictable.
+	ic_table=transpose(ic_transp)
+
+	!Deallocate my arrays.
+	if(allocated(ic_transp)) deallocate(ic_transp)
 
 
 
+end subroutine readdist_icfromfile
+
+!Subroutine to get the xth initial condition from an array ic_table.
+subroutine ic_fromarray(y,ic_table,x)
+implicit none
+
+	double precision, dimension(:,:), intent(in) :: ic_table
+	double precision, dimension(5), intent(out) :: y
+	integer, intent(in) :: x
+
+	y(2)=ic_table(x,2)
+	y(3)=ic_table(x,1)
+	y(4)=ic_table(x,4)
+	y(5)=ic_table(x,3)	
+	y(1)=0D0
+	phi_0 = Y(2)
+	psi_0 = Y(3)
+	psi_dot_0 = Y(5)
+	phi_dot_0 = Y(4)
+
+
+end subroutine ic_fromarray
+
+
+!Subroutine that initializes the file to read from.
+subroutine ic_file_init(y0, rank,numtasks,ic_table)
+implicit none
+
+	double precision, dimension(:), intent(out) :: y0
+	integer, intent(in) :: rank, numtasks
+	double precision, dimension(:,:), allocatable, intent(out) :: ic_table
+	character(len=100) :: fname
+	character(len=100) :: fform
+	integer :: fleng, fwid
+
+	namelist /filetoread/ fname, fleng, fwid, fform
+
+	!Open parameter file and read namelist.
+	open(unit=14142,file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+	read(unit=14142, nml=filetoread)
+	close(unit=14142)
+	fname=trim(fname)
+	fform=trim(fform)
+
+	!Read ics into local ictable.
+	call readdist_icfromfile(rank, numtasks, ic_table, fname, &
+		& fform, fleng, fwid)
+
+	!Get first ic.
+	call ic_fromarray(y0,ic_table,1)
+
+
+end subroutine ic_file_init
 
 
 

@@ -19,32 +19,38 @@ use hybrid_subroutines
 use rng
 use mpi
 use linked_list
+!use lyapunov_subroutines
 implicit none
 
-	integer:: i,j, points, success, counter, iccounter, sucunit,&
+	!Counters & unit numbers
+	integer:: i,j, success, counter, iccounter, sucunit,&
 		& failunit, failcount, localcount
 	integer :: errorcount, iend
 	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
 		& errorlocal, ierr, rc
-	integer :: numtasks, rank
-	integer :: ic, trajnumb
+	!Program variables.
+	integer :: ic, trajnumb, points
 	double precision :: check, v, ratio, dt
-	double precision :: v_0
-	double precision, dimension(:,:), allocatable :: sample_table
 	logical :: leave, allfailcheck, printing, traj
+	logical :: integr_ch
+	!Variables to load IC from file for direct read or interpolation (ic=4,5)
+	double precision, dimension(:,:), allocatable :: sample_table, ic_table
+	!List to record trajectory.
 	type(llnode), pointer :: ytraj_head, ytraj_tail
-
-	!*****************************
-	!FCVODE PARAMS
+	!Parallel variables.
+	integer :: numtasks, rank
+	!FCVODE params
 	double precision :: y(5), rpar(5)
 	integer :: ipar(5), meth, itmeth
 	real ::  rout(6)
 	integer(kind=8) :: neq, nglobal
 	integer :: ier, iatol, iout(21), itask
 	double precision :: t0, y0(5), t, tout, rtol, atol(5)
-	!*****************************
-
+	!LESLIS params
+	
 	namelist /ics/ points, IC, dt, printing, traj
+
+	!*****************************
 
 	!Read numb of (data points per numb of processes) & IC type from file.
 	!Do we want to print to stdout?  Do we want to record the trajectory?
@@ -98,7 +104,7 @@ implicit none
 	!If recording trajs, then initialize linked list.
 	if (traj) call ll_init(ytraj_head,ytraj_tail)
 
-	!Set IC.
+	!Set first IC.
 	if (IC == 1) then
 		call D_IC_ZEROV(Y0)
 	else if (IC == 2) then
@@ -107,6 +113,8 @@ implicit none
 		call EQEN_SLICING(Y0)
 	else if (IC==4) then
 		call IC_METR_INIT(Y0, iccounter, sample_table, 10000)
+	else if (IC==5) then
+		call ic_file_init(y0, rank,numtasks,ic_table)
 	end if
 	Y=Y0
 
@@ -117,13 +125,14 @@ implicit none
 	call FCVDENSE(NEQ, IER)
 	call FCVDENSESETJAC (1, IER)
 
-
 	!Loop over ICs until achieve numb of desired points.
-do1: 	do while (successlocal<points) 
+	integr_ch=.true.
+do1: 	do while (integr_ch) 
+
 		localcount = localcount + 1
 		!Get new point if on second or greater run.
 		if (localcount>1) then
-			call new_point(y0,iccounter,sample_table, ic)
+			call new_point(y0,iccounter,sample_table, ic, ic_table)
 
 			!Reinit time and Y
 			Y=Y0
@@ -134,7 +143,6 @@ do1: 	do while (successlocal<points)
 			ITASK = 1
 			call FCVREINIT(T0, Y0, IATOL, RTOL, ATOL, IER)			
 		end if
-		
 		!Counters
 		success = 0
 		iccounter = iccounter + 1
@@ -165,12 +173,19 @@ do1: 	do while (successlocal<points)
 			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
 		end do do3
 
-		!Print the traj & delete O(2n).
+		!Print the traj & delete -- O(2n).
 		if (traj) call print_del_traj(ytraj_head, ytraj_tail, trajnumb)
 
 		!Check if the integrator isn't finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing)
 		if (allfailcheck) exit do1
+
+		!Determine loop exit condition.
+		if (ic .ne. 5) then
+			integr_ch=(successlocal<points)
+		else
+			integr_ch=(localcount<size(ic_table,1))
+		end if
 
 	end do do1
 
