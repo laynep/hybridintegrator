@@ -108,8 +108,8 @@ implicit none
 	write(unit=u,fmt=*) "E=",energy_scale
 	if(printing) print*,"Lambda is ",lambda
 	write(unit=u,fmt=*) "Lambda is ",lambda
-       	if(printing) print*,"M is ",M
-	write(unit=u,fmt=*) "M is ",M
+       	if(printing) print*,"M is ",m
+	write(unit=u,fmt=*) "M is ",m
        	if(printing) print*,"mu is ",mu
 	write(unit=u,fmt=*) "mu is ",mu
        	if(printing) print*,"nu is ",nu

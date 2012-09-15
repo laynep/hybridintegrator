@@ -17,10 +17,11 @@
 	energy_scale = 1D3/
 &ics
 	points=10,
-	IC=6,
+	IC=2,
 	dt=1D6,
 	printing=.true.,
-	traj=.false.
+	traj=.false.,
+	lyapunov=.false.
 /
 &sample
 	samp_len=2500000,

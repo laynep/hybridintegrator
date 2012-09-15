@@ -206,8 +206,6 @@ do1:	do
 		sgn=y0(x)/abs(y0(x))
 		Y1(x) = sgn*sqrt(2D0*rho_kinetic - (Y1(y)*Y1(y)))
 		!Exit condition.
-!print*,"tolerance",tol
-!print*,"distance",metric(y0(2:5),y1(2:5))
 		if (metric(y0(2:5),y1(2:5)) .le. tol ) exit do1
 	end do do1
 
@@ -220,8 +218,6 @@ do1:	do
 
 	!Reinitialize the e-fold value: Y(1)~N.
 	Y1(1)=0D0 		
-
-
 
 end subroutine ic_eqen_pert
 
@@ -654,8 +650,6 @@ implicit none
 
 	!Deallocate my arrays.
 	if(allocated(ic_transp)) deallocate(ic_transp)
-
-
 
 end subroutine readdist_icfromfile
 

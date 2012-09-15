@@ -27,7 +27,7 @@ implicit none
 	double precision, dimension(5) :: yref		!Ref field for zooming proc.
 	double precision :: t0, t, tout, dt		!Timers.
 	!Counters & unit numbers
-	integer:: i,j, success, counter, iccounter, sucunit,&
+	integer:: i, success, counter, iccounter, sucunit,&
 		& failunit, failcount, localcount
 	integer :: errorcount, iend
 	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
@@ -35,7 +35,7 @@ implicit none
 	!Program variables.
 	integer :: ic, trajnumb, points
 	double precision :: check, v, ratio, toler
-	logical :: leave, allfailcheck, printing, traj
+	logical :: leave, allfailcheck, printing, traj, lyapunov
 	logical :: integr_ch
 	!Variables to load IC from file for direct read or interpolation (ic=4,5)
 	double precision, dimension(:,:), allocatable :: sample_table, ic_table
@@ -51,13 +51,27 @@ implicit none
 	integer :: ier, iatol, iout(21), itask
 	double precision :: rtol, atol(5)
 	!LESLIS params
+!	integer, parameter :: le_d=5	!dimn of problem
+!	integer, parameter :: le_n=3	!numb lyap exp to calc
+!	integer, parameter :: le_work=le_d*le_d+11*le_d*le_n+13*le_d+8*le_n+63
+!	integer :: le_ipar(13), le_iflag
+!	double precision :: le_te, le_t0, le_tolt, le_tolq, le_toll(le_n)
+!	double precision, dimension(le_work) :: le_fwork	
+!	double precision, dimension(le_n) :: le_exps	!lyap exponents
+!	integer, dimension(le_d):: le_inarr
+!	double precision, dimension(le_d) :: le_rearr, le_dky
+	!Interpolant variables for LESLIS.
+!	double precision, dimension(le_d) :: le_y02, le_y_1, le_y_2, le_v_1, le_v_2
+!	double precision :: le_x_1, le_x_2
 	
-	namelist /ics/ points, IC, dt, printing, traj
+
+	namelist /ics/ points, IC, dt, printing, traj, lyapunov
 
 	!*****************************
 
 	!Read numb of (data points per numb of processes) & IC type from file.
 	!Do we want to print to stdout?  Do we want to record the trajectory?
+	!Do we want to calc lyapunov exps?
 	open(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
 	read(unit=10000, nml=ics)
 	close(unit=10000)
@@ -105,6 +119,14 @@ implicit none
 	call set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout, dt)
 
+	!Set parameters for LESLIS--Lyapunov Exp calculator.
+!	if (lyapunov) then
+!		call leslis_parameters(le_ipar,le_tolt,le_tolq,le_toll,le_work)
+!		call reinit_leslis(le_t0,le_te,le_ipar,dt)
+		!Set LESLIS' time ending to FCVODE's time out.
+!		le_te=tout
+!	end if
+
 	!Set first IC.
 	if (IC == 1) then
 		!Zero vel slice.
@@ -127,6 +149,8 @@ implicit none
 	end if
 	Y=Y0
 
+
+
 	!Initialize FCVODE integrator.
 	call FCVMALLOC(T0, Y0, METH, ITMETH, IATOL, RTOL, ATOL,&
 		&IOUT, ROUT, IPAR, RPAR, IER)
@@ -134,15 +158,34 @@ implicit none
 	call FCVDENSE(NEQ, IER)
 	call FCVDENSESETJAC (1, IER)
 
+
+	!LESLIS check. Run only once.
+!	if (lyapunov) then
+!		call init(le_d,le_n,le_ipar,le_t0,le_te,dt,le_tolq,&
+!			&le_toll,le_fwork,le_iflag)
+!		if (le_iflag.ne.0) then
+!			print *, 'le_iflag = ', le_iflag
+!			stop
+!		end if 
+!	end if
+
+
 	!Loop over ICs until achieve numb of desired points.
-	integr_ch=.true.
-do1: 	do while (integr_ch) 
+	integr_ch=.true.	!Exit condition.
+do1: 	do while (integr_ch)
+
 		!Count numb of times each thread goes through loop.
 		localcount = localcount + 1
 		!Get new point if on second or greater run.
 		if (localcount>1) then
 			call new_point(y0,iccounter,sample_table, ic, &
 				&ic_table, yref, toler)
+
+			!Reinit LESLIS variables.
+!			if (lyapunov) then
+!				call reinit_leslis(le_t0,le_te,le_ipar,dt)
+!				le_te=tout
+!			end if
 
 			!Reinit time and Y
 			Y=Y0
@@ -160,14 +203,45 @@ do1: 	do while (integr_ch)
 		!Perform the integration.
 		iend=3000000
 	do3:	do i=1,iend
+
+
 			!Take field values if recording trajectory. Previously initialized
 			if (traj) call rec_traj(Y, ytraj)
 
+			!Collect lower bounds on Hermite interpolant.
+!			if(lyapunov .and. i>1) then
+!				le_y02=y
+!				le_y_1=y
+!				le_x_1=t0
+!				le_v_1=le_dky
+!			end if
+
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
+
 			call FCVODE(TOUT,T,Y,ITASK,IER)
+
 			TOUT = TOUT + dt
 			!*********************************
+
+!			if (lyapunov) then
+!				!Get derivs for Lyapunov calc.
+!				call fcvdky(t, 1, le_dky, ier)
+!				if (i>1) then
+!					!Upper bounds on Hermite interp.
+!					le_y_2 = y
+!					le_x_2 = tout
+!					le_v_2 = le_dky
+!					!Perform second integration on linearized problem.
+!					call leslis(LE_geta,le_d,le_n,le_exps,le_t0,&
+!					le_te, dt, &
+!					&le_y02,le_tolq,le_toll,le_ipar,le_fwork,&
+!					&le_iflag,le_inarr,le_rearr)
+!				end if
+!				!Update times with times for FCVODE.
+!				le_te = tout			
+!				le_t0 = t
+!			end if
 
 			!Check succ or fail condition: N>65 success=1, and N<65 failure=0.
 			call succ_or_fail(Y, success, successlocal, faillocal,&
@@ -183,13 +257,13 @@ do1: 	do while (integr_ch)
 			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
 		end do do3
 
+!if (lyapunov) print*,"lyapunov exps", le_exps
 		!Print the traj & delete -- O(2n).
 		if (traj) call print_del_traj(ytraj, trajnumb)
 
 		!Check if the integrator isn't finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing)
 		if (allfailcheck) exit do1
-
 		!Determine loop exit condition.
 		if (ic<5 .or. ic==6) then
 			integr_ch=(successlocal<points)
@@ -198,7 +272,6 @@ do1: 	do while (integr_ch)
 		end if
 
 	end do do1
-
 
 	!Halts processors here.
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
@@ -214,8 +287,11 @@ do1: 	do while (integr_ch)
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
 	!Print from master.
-	if(rank==0) call hybrid_finalstats(ic, counter, failcount, &
-			&badfieldcounter, errorcount, printing)
+	if(rank==0) then
+		call hybrid_finalstats(ic, counter, failcount, &
+		&badfieldcounter, errorcount, printing)
+!		if (printing .and. lyapunov)  call le_stats(le_ipar, le_iflag, le_t0)
+	end if
 
 	!Clean up integrator.
 	call FCVFREE
@@ -249,38 +325,38 @@ implicit none
 
 
 	!Potential and its derivatives.
-	V = (RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*((1D0 - &
-		&((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))**2D0 &
-		&+ ((Y(2)*Y(2))/(RPAR(3)*RPAR(3)))&
-		& + ((Y(2)*Y(2)*Y(3)*Y(3))/ (RPAR(4)**4D0)))
+	v = (rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1d0 - &
+		&((y(3)*y(3))/(rpar(2)*rpar(2))))**2d0 &
+		&+ ((y(2)*y(2))/(rpar(3)*rpar(3)))&
+		& + ((y(2)*y(2)*y(3)*y(3))/ (rpar(4)**4d0)))
 
-	D_phi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*(((Y(2))/(RPAR(3)*RPAR(3)))+ &
-		&((Y(2)*Y(3)*Y(3))/(RPAR(4)**4D0)))
+	d_phi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((y(2))/(rpar(3)*rpar(3)))+ &
+		&((y(2)*y(3)*y(3))/(rpar(4)**4d0)))
 
-	D_psi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*(((-2D0*Y(3))/&
-		&(RPAR(2)*RPAR(2)))*(1D0 &
-		&-((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))+&
-		& ((Y(2)*Y(2)*Y(3))/(RPAR(4)**4D0)))
+	d_psi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2d0*y(3))/&
+		&(rpar(2)*rpar(2)))*(1d0 &
+		&-((y(3)*y(3))/(rpar(2)*rpar(2))))+&
+		& ((y(2)*y(2)*y(3))/(rpar(4)**4d0)))
 
-	DD_phi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*((1D0/(RPAR(3)*RPAR(3)))+&
-		&((Y(3)*Y(3))/(RPAR(4)**4D0)))
+	dd_phi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1d0/(rpar(3)*rpar(3)))+&
+		&((y(3)*y(3))/(rpar(4)**4d0)))
 
-	DD_psi_V = 2D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*(((-2D0)/(RPAR(2)*RPAR(2)))+ &
-		&((4D0*Y(3)*Y(3))/(RPAR(2)**4D0))+&
-		& ((Y(2)*Y(2))/(RPAR(4)**4D0)))
+	dd_psi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2d0)/(rpar(2)*rpar(2)))+ &
+		&((4d0*y(3)*y(3))/(rpar(2)**4d0))+&
+		& ((y(2)*y(2))/(rpar(4)**4d0)))
 
-	D_phi_D_psi_V = (4D0*(RPAR(1)*RPAR(1)*RPAR(1)*RPAR(1))*Y(2)*Y(3))/&
-		&(RPAR(4)*RPAR(4)*RPAR(4)*RPAR(4))
+	d_phi_d_psi_v = (4d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*y(2)*y(3))/&
+		&(rpar(4)*rpar(4)*rpar(4)*rpar(4))
 
-	Hub = sqrt(RPAR(5)*(.5D0*((Y(4)*Y(4)) + (Y(5)*Y(5))) + V))
+	hub = sqrt(rpar(5)*(.5d0*((y(4)*y(4)) + (y(5)*y(5))) + v))
 
 	
  	!Equations of motion.
-	YDOT(1) = Hub
-	YDOT(2) = Y(4)
-	YDOT(3) = Y(5)
-	YDOT(4) = -3D0*Hub*Y(4)-D_phi_V
-	YDOT(5) = -3D0*Hub*Y(5)-D_psi_V
+	ydot(1) = hub
+	ydot(2) = y(4)
+	ydot(3) = y(5)
+	ydot(4) = -3d0*hub*y(4)-d_phi_v
+	ydot(5) = -3d0*hub*y(5)-d_psi_v
 
 	!Success
 	IER = 0
@@ -305,54 +381,54 @@ implicit none
 	double precision :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
 
 	!Potential, V, and its derivatives.
-	V = (RPAR(1)**4D0)*((1D0 - ((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))**2D0 +&
-		& ((Y(2)*Y(2))/(RPAR(3)*RPAR(3)))&
-		& + ((Y(2)*Y(2)*Y(3)*Y(3))/ (RPAR(4)**4D0)))
+	v = (rpar(1)**4d0)*((1d0 - ((y(3)*y(3))/(rpar(2)*rpar(2))))**2d0 +&
+		& ((y(2)*y(2))/(rpar(3)*rpar(3)))&
+		& + ((y(2)*y(2)*y(3)*y(3))/ (rpar(4)**4d0)))
 
-	D_phi_V = 2D0*(RPAR(1)**4D0)*(((Y(2))/(RPAR(3)*RPAR(3)))+&
-		& ((Y(2)*Y(3)*Y(3))/(RPAR(4)**4D0)))
+	d_phi_v = 2d0*(rpar(1)**4d0)*(((y(2))/(rpar(3)*rpar(3)))+&
+		& ((y(2)*y(3)*y(3))/(rpar(4)**4d0)))
 
-	D_psi_V = 2D0*(RPAR(1)**4D0)*(((-2D0*Y(3))/(RPAR(2)*RPAR(2)))*(1D0 &
-		&-((Y(3)*Y(3))/(RPAR(2)*RPAR(2))))+ &
-		&((Y(2)*Y(2)*Y(3))/(RPAR(4)**4D0)))
+	d_psi_v = 2d0*(rpar(1)**4d0)*(((-2d0*y(3))/(rpar(2)*rpar(2)))*(1d0 &
+		&-((y(3)*y(3))/(rpar(2)*rpar(2))))+ &
+		&((y(2)*y(2)*y(3))/(rpar(4)**4d0)))
 
-	DD_phi_V = 2D0*(RPAR(1)**4D0)*((1D0/(RPAR(3)*RPAR(3)))+&
-		&((Y(3)*Y(3))/(RPAR(4)**4D0)))
+	dd_phi_v = 2d0*(rpar(1)**4d0)*((1d0/(rpar(3)*rpar(3)))+&
+		&((y(3)*y(3))/(rpar(4)**4d0)))
 
-	DD_psi_V = 2D0*(RPAR(1)**4D0)*(((-2D0)/(RPAR(2)*RPAR(2)))+ &
-		&((4D0*Y(3)*Y(3))/(RPAR(2)**4D0))+&
-		& ((Y(2)*Y(2))/(RPAR(4)**4D0)))
+	dd_psi_v = 2d0*(rpar(1)**4d0)*(((-2d0)/(rpar(2)*rpar(2)))+ &
+		&((4d0*y(3)*y(3))/(rpar(2)**4d0))+&
+		& ((y(2)*y(2))/(rpar(4)**4d0)))
 
-	D_phi_D_psi_V = (4D0*(RPAR(1)**4D0)*Y(2)*Y(3))/(RPAR(4)**4D0)
+	d_phi_d_psi_v = (4d0*(rpar(1)**4d0)*y(2)*y(3))/(rpar(4)**4d0)
 
-	Hub = SQRT(RPAR(5)*(.5D0*((Y(4)*Y(4)) + (Y(5)*Y(5))) + V))
+	hub = sqrt(rpar(5)*(.5d0*((y(4)*y(4)) + (y(5)*y(5))) + v))
 
 	!Partial derivatives of the RHS vector in system of equations.
-	DJAC(1,1)= 0D0
-	DJAC(1,2)= .5D0*(1D0/Hub)*RPAR(5)*D_phi_V
-	DJAC(1,3)= .5D0*(1D0/Hub)*RPAR(5)*D_psi_V
-	DJAC(1,4)= .5D0*(1D0/Hub)*RPAR(5)*Y(4)
-	DJAC(1,5)= .5D0*(1D0/Hub)*RPAR(5)*Y(5)
-	DJAC(2,1)= 0D0
-	DJAC(2,2)= 0D0
-	DJAC(2,3)= 0D0
-	DJAC(2,4)= 1D0
-	DJAC(2,5)= 0D0
-	DJAC(3,1)= 0D0
-	DJAC(3,2)= 0D0
-	DJAC(3,3)= 0D0
-	DJAC(3,4)= 0D0
-	DJAC(3,5)= 1D0
-	DJAC(4,1)= 0D0
-	DJAC(4,2)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(4)*D_phi_V - DD_phi_V
-	DJAC(4,3)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(4)*D_psi_V - D_phi_D_psi_V
-	DJAC(4,4)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(4)*Y(4) - 3D0*Hub
-	DJAC(4,5)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(4)*Y(5)
-	DJAC(5,1)= 0D0
-	DJAC(5,2)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(5)*D_phi_V - D_phi_D_psi_V
-	DJAC(5,3)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(5)*D_psi_V - DD_psi_V
-	DJAC(5,4)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(4)*Y(5)
-	DJAC(5,5)= -1.5D0*(1D0/Hub)*RPAR(5)*Y(5)*Y(5) - 3D0*Hub
+	djac(1,1)= 0d0
+	djac(1,2)= .5d0*(1d0/hub)*rpar(5)*d_phi_v
+	djac(1,3)= .5d0*(1d0/hub)*rpar(5)*d_psi_v
+	djac(1,4)= .5d0*(1d0/hub)*rpar(5)*y(4)
+	djac(1,5)= .5d0*(1d0/hub)*rpar(5)*y(5)
+	djac(2,1)= 0d0
+	djac(2,2)= 0d0
+	djac(2,3)= 0d0
+	djac(2,4)= 1d0
+	djac(2,5)= 0d0
+	djac(3,1)= 0d0
+	djac(3,2)= 0d0
+	djac(3,3)= 0d0
+	djac(3,4)= 0d0
+	djac(3,5)= 1d0
+	djac(4,1)= 0d0
+	djac(4,2)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*d_phi_v - dd_phi_v
+	djac(4,3)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*d_psi_v - d_phi_d_psi_v
+	djac(4,4)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*y(4) - 3d0*hub
+	djac(4,5)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*y(5)
+	djac(5,1)= 0d0
+	djac(5,2)= -1.5d0*(1d0/hub)*rpar(5)*y(5)*d_phi_v - d_phi_d_psi_v
+	djac(5,3)= -1.5d0*(1d0/hub)*rpar(5)*y(5)*d_psi_v - dd_psi_v
+	djac(5,4)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*y(5)
+	djac(5,5)= -1.5d0*(1d0/hub)*rpar(5)*y(5)*y(5) - 3d0*hub
 
 	!Success
 	IER = 0
