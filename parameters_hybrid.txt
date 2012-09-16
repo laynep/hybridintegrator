@@ -16,12 +16,11 @@
 	lambda = 6.8D-3,
 	energy_scale = 1D3/
 &ics
-	points=10,
+	points=1,
 	IC=2,
 	dt=1D6,
 	printing=.true.,
-	traj=.false.,
-	lyapunov=.false.
+	traj=.false.
 /
 &sample
 	samp_len=2500000,

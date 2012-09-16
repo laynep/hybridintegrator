@@ -19,6 +19,7 @@ use hybrid_subroutines
 use rng
 use mpi
 use linked_list
+use lyapunov_subroutines
 implicit none
 
 	!Main variables.
@@ -49,6 +50,19 @@ implicit none
 	integer(kind=8) :: neq, nglobal
 	integer :: ier, iatol, iout(21), itask
 	double precision :: rtol, atol(5)
+	!LESLIS params
+	integer, parameter :: le_d=5	!dimn of problem
+	integer, parameter :: le_n=3	!numb lyap exp to calc
+	integer, parameter :: le_work=le_d*le_d+11*le_d*le_n+13*le_d+8*le_n+63
+	integer :: le_ipar(13), le_iflag
+	double precision :: le_te, le_t0, le_tolt, le_tolq, le_toll(le_n)
+	double precision, dimension(le_work) :: le_fwork	
+	double precision, dimension(le_n) :: le_exps	!lyap exponents
+	integer, dimension(le_d):: le_inarr
+	double precision, dimension(le_d) :: le_rearr, le_dky
+	!Interpolant variables for LESLIS.
+	double precision, dimension(le_d) :: le_y02, le_y_1, le_y_2, le_v_1, le_v_2
+	double precision :: le_x_1, le_x_2
 
 	namelist /ics/ points, IC, dt, printing, traj
 
@@ -57,6 +71,7 @@ implicit none
 
 	!Read numb of (data points per numb of processes) & IC type from file.
 	!Do we want to print to stdout?  Do we want to record the trajectory?
+	!Do we want to calc lyapunov exps?
 	open(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
 	read(unit=10000, nml=ics)
 	close(unit=10000)
@@ -104,6 +119,12 @@ implicit none
 	call set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout, dt)
 
+	!Set parameters for LESLIS--Lyapunov Exp calculator.
+	call leslis_parameters(le_ipar,le_tolt,le_tolq,le_toll,le_work)
+	call reinit_leslis(le_t0,le_te,le_ipar,dt)
+	!Set LESLIS' time ending to FCVODE's time out.
+	le_te=tout
+
 	!Set first IC.
 	if (IC == 1) then
 		!Zero vel slice.
@@ -133,6 +154,17 @@ implicit none
 	call FCVDENSE(NEQ, IER)
 	call FCVDENSESETJAC (1, IER)
 
+
+	!LESLIS check. Run only once.
+	call init(le_d,le_n,le_ipar,le_t0,le_te,dt,le_tolq,&
+		&le_toll,le_fwork,le_iflag)
+	if (le_iflag.ne.0) then
+		print *, 'le_iflag = ', le_iflag
+		stop
+	end if 
+
+
+
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.	!Exit condition.
 do1: 	do while (integr_ch)
@@ -143,6 +175,10 @@ do1: 	do while (integr_ch)
 		if (localcount>1) then
 			call new_point(y0,iccounter,sample_table, ic, &
 				&ic_table, yref, toler)
+
+			!Reinit LESLIS variables.
+			call reinit_leslis(le_t0,le_te,le_ipar,dt)
+			le_te=tout
 
 			!Reinit time and Y
 			Y=Y0
@@ -165,12 +201,38 @@ do1: 	do while (integr_ch)
 			!Take field values if recording trajectory. Previously initialized
 			if (traj) call rec_traj(Y, ytraj)
 
+			!Collect lower bounds on Hermite interpolant.
+			if(i>1) then
+				le_y02=y
+				le_y_1=y
+				le_x_1=t0
+				le_v_1=le_dky
+			end if
 
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
+
 			call FCVODE(TOUT,T,Y,ITASK,IER)
+
 			TOUT = TOUT + dt
 			!*********************************
+
+			!Get derivs for Lyapunov calc.
+			call fcvdky(t, 1, le_dky, ier)
+			if (i>1) then
+				!Upper bounds on Hermite interp.
+				le_y_2 = y
+				le_x_2 = tout
+				le_v_2 = le_dky
+				!Perform second integration on linearized problem.
+				call leslis(geta,le_d,le_n,le_exps,le_t0,&
+				le_te, dt, &
+				&le_y02,le_tolq,le_toll,le_ipar,le_fwork,&
+				&le_iflag,le_inarr,le_rearr)
+			end if
+			!Update times with times for FCVODE.
+			le_te = tout			
+			le_t0 = t
 
 			!Check succ or fail condition: N>65 success=1, and N<65 failure=0.
 			call succ_or_fail(Y, success, successlocal, faillocal,&
@@ -186,6 +248,8 @@ do1: 	do while (integr_ch)
 			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
 		end do do3
 
+
+print*,"lyapunov exps", le_exps
 		!Print the traj & delete -- O(2n).
 		if (traj) call print_del_traj(ytraj, trajnumb)
 
@@ -218,6 +282,7 @@ do1: 	do while (integr_ch)
 	if(rank==0) then
 		call hybrid_finalstats(ic, counter, failcount, &
 		&badfieldcounter, errorcount, printing)
+		if (printing)  call le_stats(le_ipar, le_iflag, le_t0)
 	end if
 
 	!Clean up integrator.
