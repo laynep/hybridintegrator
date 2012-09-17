@@ -93,13 +93,16 @@ implicit none
 		write(unit=u,fmt=*) "EQUAL ENERGY SLICE"
 	else if (IC == 3) then
 		if(printing) print*,"2D SLICING OF EQEN SLICE"
-                write(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
+        write(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
 	else if (IC == 4) then
 		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
-                write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
+        write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
 	else if (ic==5) then
 		if(printing) print*,"IC FROM FILE"
-                write(unit=u,fmt=*) "IC FROM FILE"
+        write(unit=u,fmt=*) "IC FROM FILE"
+    else if (ic==6) then
+        if (printing) print*, "IC FROM ZOOMING IN ON POINT"
+        write(unit=u,fmt=*) "IC FROM ZOOMING IN ON POINT"
 	end if
 
 	if(printing) print*,"Planck mass is ",m_planck
@@ -146,11 +149,15 @@ implicit none
 		write(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
 	else if (IC == 4) then
 		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
-                write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
+        write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
 	else if (ic==5) then
 		if(printing) print*,"IC FROM FILE"
-                write(unit=u,fmt=*) "IC FROM FILE"
+        write(unit=u,fmt=*) "IC FROM FILE"
+	else if (ic==6) then
+        if (printing) print*, "IC FROM ZOOMING IN ON POINT"
+        write(unit=u,fmt=*) "IC FROM ZOOMING IN ON POINT"
 	end if
+
 	if(printing) print*,"Number of succ points ",counter,&
 		&"Number of fail points ",failcount," ratio ",ratio
 	write(unit=u,fmt=*) "Number of succ points ",counter,&

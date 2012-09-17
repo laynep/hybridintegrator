@@ -187,10 +187,15 @@ do1: 	do while (integr_ch)
 		end do do3
 
 		!Print the traj & delete -- O(2n).
-		if (traj) call print_del_traj(ytraj, trajnumb)
+		if (success==1 .and. traj) then
+      call print_del_traj(ytraj, trajnumb)
+    !If not successful, then just delete list.
+    else if (success==0 .and. traj) then
+      call ll_del_all(ytraj)
+    end if
 
 		!Check if the integrator isn't finding any succ points.
-		call all_fail_check(successlocal, faillocal, allfailcheck, printing)
+		call all_fail_check(successlocal, faillocal, allfailcheck, printing, check)
 		if (allfailcheck) exit do1
 		!Determine loop exit condition.
 		if (ic<5 .or. ic==6) then
