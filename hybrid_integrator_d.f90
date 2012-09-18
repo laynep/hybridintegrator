@@ -19,12 +19,13 @@ use hybrid_subroutines
 use rng
 use mpi
 use linked_list
+use types, only : dp
 implicit none
 
 	!Main variables.
-	double precision, dimension(5) :: y, y0		!The fields.
-	double precision, dimension(5) :: yref		!Ref field for zooming proc.
-	double precision :: t0, t, tout, dt		!Timers.
+	real(dp), dimension(5) :: y, y0		!The fields.
+	real(dp), dimension(5) :: yref		!Ref field for zooming proc.
+	real(dp) :: t0, t, tout, dt		!Timers.
 	!Counters & unit numbers
 	integer:: i, success, counter, iccounter, sucunit,&
 		& failunit, failcount, localcount
@@ -33,22 +34,22 @@ implicit none
 		& errorlocal, ierr, rc
 	!Program variables.
 	integer :: ic, trajnumb, points
-	double precision :: check, v, ratio, toler
+	real(dp) :: check, v, ratio, toler
 	logical :: leave, allfailcheck, printing, traj
 	logical :: integr_ch
 	!Variables to load IC from file for direct read or interpolation (ic=4,5)
-	double precision, dimension(:,:), allocatable :: sample_table, ic_table
+	real(dp), dimension(:,:), allocatable :: sample_table, ic_table
 	!List to record trajectory.
 	type(linkedlist) :: ytraj
 	!Parallel variables.
 	integer :: numtasks, rank
 	!FCVODE params
-	double precision :: rpar(5)
+	real(dp) :: rpar(5)
 	integer :: ipar(5), meth, itmeth
 	real ::  rout(6)
 	integer(kind=8) :: neq, nglobal
 	integer :: ier, iatol, iout(21), itask
-	double precision :: rtol, atol(5)
+	real(dp) :: rtol, atol(5)
 
 	namelist /ics/ points, IC, dt, printing, traj
 
@@ -123,6 +124,9 @@ implicit none
 	else if (IC==6) then
 		!Zoom in on one point on eq en surface.
 		call ic_zoom_init(y0, yref, iccounter, toler)
+  else if (ic==7) then
+    !Get a fixed initial condition.
+    call fixed_ic(y0)
 	end if
 	Y=Y0
 
@@ -146,7 +150,7 @@ do1: 	do while (integr_ch)
 
 			!Reinit time and Y
 			Y=Y0
-			T0=0D0
+			T0=0_dp
 			TOUT = dt
 			T=T0
 			!Reinitialize integrator.
@@ -243,44 +247,45 @@ end program hybrid_integrator_d
 !RHS of equation to integrate.
 !***********************************************************************
 subroutine FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
-implicit none
+  use types, only : dp
+  implicit none
 	
 	!******************
-	double precision, intent(in) :: Y(*), t
-	double precision, intent(out) :: ydot(*)
+	real(dp), intent(in) :: Y(*), t
+	real(dp), intent(out) :: ydot(*)
 	integer, intent(in) :: IPAR(*)
 	integer, intent(out) :: IER
-	double precision, intent(in) :: RPAR(*)
+	real(dp), intent(in) :: RPAR(*)
 	!******************
 
-	double precision :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
+	real(dp) :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
 
 
 	!Potential and its derivatives.
-	v = (rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1d0 - &
+	v = (rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1_dp - &
 		&((y(3)*y(3))/(rpar(2)*rpar(2))))**2 &
 		&+ ((y(2)*y(2))/(rpar(3)*rpar(3)))&
 		& + ((y(2)*y(2)*y(3)*y(3))/ (rpar(4)**4)))
 
-	d_phi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((y(2))/(rpar(3)*rpar(3)))+ &
+	d_phi_v = 2_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((y(2))/(rpar(3)*rpar(3)))+ &
 		&((y(2)*y(3)*y(3))/(rpar(4)**4)))
 
-	d_psi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2d0*y(3))/&
-		&(rpar(2)*rpar(2)))*(1d0 &
+	d_psi_v = 2_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2_dp*y(3))/&
+		&(rpar(2)*rpar(2)))*(1_dp &
 		&-((y(3)*y(3))/(rpar(2)*rpar(2))))+&
 		& ((y(2)*y(2)*y(3))/(rpar(4)**4)))
 
-	dd_phi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1d0/(rpar(3)*rpar(3)))+&
+	dd_phi_v = 2_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1_dp/(rpar(3)*rpar(3)))+&
 		&((y(3)*y(3))/(rpar(4)**4)))
 
-	dd_psi_v = 2d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2d0)/(rpar(2)*rpar(2)))+ &
-		&((4d0*y(3)*y(3))/(rpar(2)**4))+&
+	dd_psi_v = 2_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2_dp)/(rpar(2)*rpar(2)))+ &
+		&((4_dp*y(3)*y(3))/(rpar(2)**4))+&
 		& ((y(2)*y(2))/(rpar(4)**4)))
 
-	d_phi_d_psi_v = (4d0*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*y(2)*y(3))/&
+	d_phi_d_psi_v = (4_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*y(2)*y(3))/&
 		&(rpar(4)*rpar(4)*rpar(4)*rpar(4))
 
-	hub = sqrt(rpar(5)*(.5d0*((y(4)*y(4)) + (y(5)*y(5))) + v))
+	hub = sqrt(rpar(5)*(.5_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
 	if (hub<0) then
 		print*,"Hubble parameter < 0"
 		ier=1
@@ -291,8 +296,8 @@ implicit none
 	ydot(1) = hub
 	ydot(2) = y(4)
 	ydot(3) = y(5)
-	ydot(4) = -3d0*hub*y(4)-d_phi_v
-	ydot(5) = -3d0*hub*y(5)-d_psi_v
+	ydot(4) = -3_dp*hub*y(4)-d_phi_v
+	ydot(5) = -3_dp*hub*y(5)-d_psi_v
 
 	!Success
 	IER = 0
@@ -303,68 +308,69 @@ end subroutine FCVFUN
 !Jacobian of RHS of equation to integrate.
 subroutine FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
 			&WK1, WK2, WK3, IER)
-implicit none
+  use types, only : dp
+  implicit none
 
 	!**************************
-	double precision, intent(in) :: Y(*), FY(*), T, H
+	real(dp), intent(in) :: Y(*), FY(*), T, H
 	integer, intent(in) :: IPAR(*), NEQ
 	integer, intent(out) :: IER
-	double precision, intent(inout) :: DJAC(NEQ,*)
-	double precision, intent(in) :: RPAR(*)
-	double precision, intent(in) :: WK1(*), WK2(*), WK3(*)
+	real(dp), intent(inout) :: DJAC(NEQ,*)
+	real(dp), intent(in) :: RPAR(*)
+	real(dp), intent(in) :: WK1(*), WK2(*), WK3(*)
 	!**************************
 
-	double precision :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
+	real(dp) :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
 
 	!Potential, V, and its derivatives.
-	v = (rpar(1)**4)*((1d0 - ((y(3)*y(3))/(rpar(2)*rpar(2))))**2 +&
+	v = (rpar(1)**4)*((1_dp - ((y(3)*y(3))/(rpar(2)*rpar(2))))**2 +&
 		& ((y(2)*y(2))/(rpar(3)*rpar(3)))&
 		& + ((y(2)*y(2)*y(3)*y(3))/ (rpar(4)**4)))
 
-	d_phi_v = 2d0*(rpar(1)**4)*(((y(2))/(rpar(3)*rpar(3)))+&
+	d_phi_v = 2_dp*(rpar(1)**4)*(((y(2))/(rpar(3)*rpar(3)))+&
 		& ((y(2)*y(3)*y(3))/(rpar(4)**4)))
 
-	d_psi_v = 2d0*(rpar(1)**4)*(((-2d0*y(3))/(rpar(2)*rpar(2)))*(1d0 &
+	d_psi_v = 2_dp*(rpar(1)**4)*(((-2_dp*y(3))/(rpar(2)*rpar(2)))*(1_dp &
 		&-((y(3)*y(3))/(rpar(2)*rpar(2))))+ &
 		&((y(2)*y(2)*y(3))/(rpar(4)**4)))
 
-	dd_phi_v = 2d0*(rpar(1)**4)*((1d0/(rpar(3)*rpar(3)))+&
+	dd_phi_v = 2_dp*(rpar(1)**4)*((1_dp/(rpar(3)*rpar(3)))+&
 		&((y(3)*y(3))/(rpar(4)**4)))
 
-	dd_psi_v = 2d0*(rpar(1)**4)*(((-2d0)/(rpar(2)*rpar(2)))+ &
-		&((4d0*y(3)*y(3))/(rpar(2)**4))+&
+	dd_psi_v = 2_dp*(rpar(1)**4)*(((-2_dp)/(rpar(2)*rpar(2)))+ &
+		&((4_dp*y(3)*y(3))/(rpar(2)**4))+&
 		& ((y(2)*y(2))/(rpar(4)**4)))
 
-	d_phi_d_psi_v = (4d0*(rpar(1)**4)*y(2)*y(3))/(rpar(4)**4)
+	d_phi_d_psi_v = (4_dp*(rpar(1)**4)*y(2)*y(3))/(rpar(4)**4)
 
-	hub = sqrt(rpar(5)*(.5d0*((y(4)*y(4)) + (y(5)*y(5))) + v))
+	hub = sqrt(rpar(5)*(.5_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
 
 	!Partial derivatives of the RHS vector in system of equations.
-	djac(1,1)= 0d0
-	djac(1,2)= .5d0*(1d0/hub)*rpar(5)*d_phi_v
-	djac(1,3)= .5d0*(1d0/hub)*rpar(5)*d_psi_v
-	djac(1,4)= .5d0*(1d0/hub)*rpar(5)*y(4)
-	djac(1,5)= .5d0*(1d0/hub)*rpar(5)*y(5)
-	djac(2,1)= 0d0
-	djac(2,2)= 0d0
-	djac(2,3)= 0d0
-	djac(2,4)= 1d0
-	djac(2,5)= 0d0
-	djac(3,1)= 0d0
-	djac(3,2)= 0d0
-	djac(3,3)= 0d0
-	djac(3,4)= 0d0
-	djac(3,5)= 1d0
-	djac(4,1)= 0d0
-	djac(4,2)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*d_phi_v - dd_phi_v
-	djac(4,3)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*d_psi_v - d_phi_d_psi_v
-	djac(4,4)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*y(4) - 3d0*hub
-	djac(4,5)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*y(5)
-	djac(5,1)= 0d0
-	djac(5,2)= -1.5d0*(1d0/hub)*rpar(5)*y(5)*d_phi_v - d_phi_d_psi_v
-	djac(5,3)= -1.5d0*(1d0/hub)*rpar(5)*y(5)*d_psi_v - dd_psi_v
-	djac(5,4)= -1.5d0*(1d0/hub)*rpar(5)*y(4)*y(5)
-	djac(5,5)= -1.5d0*(1d0/hub)*rpar(5)*y(5)*y(5) - 3d0*hub
+	djac(1,1)= 0_dp
+	djac(1,2)= .5_dp*(1_dp/hub)*rpar(5)*d_phi_v
+	djac(1,3)= .5_dp*(1_dp/hub)*rpar(5)*d_psi_v
+	djac(1,4)= .5_dp*(1_dp/hub)*rpar(5)*y(4)
+	djac(1,5)= .5_dp*(1_dp/hub)*rpar(5)*y(5)
+	djac(2,1)= 0_dp
+	djac(2,2)= 0_dp
+	djac(2,3)= 0_dp
+	djac(2,4)= 1_dp
+	djac(2,5)= 0_dp
+	djac(3,1)= 0_dp
+	djac(3,2)= 0_dp
+	djac(3,3)= 0_dp
+	djac(3,4)= 0_dp
+	djac(3,5)= 1_dp
+	djac(4,1)= 0_dp
+	djac(4,2)= -1.5_dp*(1_dp/hub)*rpar(5)*y(4)*d_phi_v - dd_phi_v
+	djac(4,3)= -1.5_dp*(1_dp/hub)*rpar(5)*y(4)*d_psi_v - d_phi_d_psi_v
+	djac(4,4)= -1.5_dp*(1_dp/hub)*rpar(5)*y(4)*y(4) - 3_dp*hub
+	djac(4,5)= -1.5_dp*(1_dp/hub)*rpar(5)*y(4)*y(5)
+	djac(5,1)= 0_dp
+	djac(5,2)= -1.5_dp*(1_dp/hub)*rpar(5)*y(5)*d_phi_v - d_phi_d_psi_v
+	djac(5,3)= -1.5_dp*(1_dp/hub)*rpar(5)*y(5)*d_psi_v - dd_psi_v
+	djac(5,4)= -1.5_dp*(1_dp/hub)*rpar(5)*y(4)*y(5)
+	djac(5,5)= -1.5_dp*(1_dp/hub)*rpar(5)*y(5)*y(5) - 3_dp*hub
 
 	!Success
 	IER = 0

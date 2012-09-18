@@ -6,6 +6,9 @@
 #	IC = 4		!IC from Metropolis Algorithm.
 #	IC = 5		!IC from a file.
 #	IC = 6		!IC sample zoomed on ! success point.
+# IC = 7    !IC sample from a fixed initial condition in
+# d_hybrid_initialconditions module.
+#
 #Points variable is the number of successful data points
 #per process, i.e. TotalPoints=points*numtasks.
 #
@@ -14,10 +17,10 @@
 	mu = 500D3,
 	nu = .015D3,
 	lambda = 6.8D-3,
-	energy_scale = 1D3/
+	energy_scale = 1D1/
 &ics
-	points=1,
-	IC=2,
+	points=100,
+	IC=6,
 	dt=1D6,
 	printing=.true.,
 	traj=.false.
@@ -34,8 +37,7 @@
 	fform="unformatted"
 /
 &zoom
-	yref=0D0,93.188031799106000D0, 197.41870473385262D0, -1355404.4531420982D0, -403582.41835165431D0, !NOTE:   N,phi,psi,phi_dot,psi_dot
-	toler=1D-3
+	yref=0D0,62.549557D0, 196.466332D0, 93.7453D0, 105.88592D0, !NOTE:   N,phi,psi,phi_dot,psi_dot
+	toler=1D0
 /
 
-                        

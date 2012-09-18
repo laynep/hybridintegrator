@@ -1,6 +1,7 @@
 module hybrid_subroutines
-use d_hybrid_initialconditions
-implicit none
+  use types, only : dp
+  use d_hybrid_initialconditions
+  implicit none
 
 contains
 
@@ -128,7 +129,7 @@ implicit none
 	integer, intent(inout) :: ic, counter, failcount, badfieldcounter, errorcount
 	integer, optional, intent(in) :: infounit
 	integer :: u
-	double precision :: ratio
+	real(dp) :: ratio
 	logical, intent(in) :: printing
 
 	if(present(infounit)) then
@@ -175,13 +176,13 @@ end subroutine hybrid_finalstats
 subroutine new_point(y0,iccounter,sample_table,ic, ic_table, yref, toler)
 implicit none
 
-	double precision, dimension(:), intent(inout) :: y0
-	double precision, dimension(:), optional, intent(inout) :: yref
-	double precision, optional, intent(in) :: toler
+	real(dp), dimension(:), intent(inout) :: y0
+	real(dp), dimension(:), optional, intent(inout) :: yref
+	real(dp), optional, intent(in) :: toler
 	integer, intent(inout) :: iccounter
 	integer, intent(in) :: ic
-	double precision, dimension(:,:), allocatable, intent(inout) :: sample_table
-	double precision, dimension(:,:), optional, intent(in) :: ic_table
+	real(dp), dimension(:,:), allocatable, intent(inout) :: sample_table
+	real(dp), dimension(:,:), optional, intent(in) :: ic_table
 
 
 	if (ic == 1) then
@@ -196,7 +197,9 @@ implicit none
 		call ic_fromarray(y0,ic_table,iccounter+1)
 	else if (ic==6) then
 		call ic_eqen_pert(yref,y0,iccounter,euclidean,toler)
-	end if
+  else if (ic==7) then
+    stop
+  end if
 
 end subroutine new_point
 
@@ -206,19 +209,19 @@ subroutine succ_or_fail(Y, success, successlocal, faillocal, &
 implicit none
 
 	integer, intent(inout) :: success, successlocal, faillocal, sucunit, failunit, ic
-	double precision, dimension(:), intent(inout) :: Y
+	real(dp), dimension(:), intent(inout) :: Y
 	logical, intent(inout) :: leave
-	double precision :: V, check
+	real(dp) :: V, check
 	logical, intent(in) :: printing
 
 	!Check if  fields fell into minima (if engy dnsty <
 	! dnsty at infl end)
-	check = (.5D0*( (Y(4)*Y(4)) + (Y(5)*Y(5))) &
+	check = (.5_dp*( (Y(4)*Y(4)) + (Y(5)*Y(5))) &
 		&+V_h(Y) - (lambda*lambda*lambda*lambda))
 
 	!Gives a 1 if inflation is successful.
 	leave = .false.
-	if (Y(1)>65D0) then
+	if (Y(1)>65_dp) then
 		success = 1
 		successlocal = successlocal + 1
 		if (IC==1) then
@@ -231,7 +234,7 @@ implicit none
 			print*,successlocal,success
 		end if
 		leave = .true.
-	elseif (check<0D0) then
+	elseif (check<0_dp) then
 		success = 0
 		faillocal = faillocal + 1
 		if (IC==1) then
@@ -254,12 +257,12 @@ subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 implicit none
 
 	!FCVODE PARAMS
-	double precision, intent(out) :: RPAR(5)
+	real(dp), intent(out) :: RPAR(5)
 	integer, intent(out) :: METH, ITMETH
 	integer(kind=8), intent(out) :: NEQ, NGLOBAL
 	integer, intent(out) :: IATOL, ITASK
-	double precision, intent(out) :: T0, T, TOUT, RTOL, ATOL(5)
-	double precision, intent(in) :: dt
+	real(dp), intent(out) :: T0, T, TOUT, RTOL, ATOL(5)
+	real(dp), intent(in) :: dt
 
 	!Other params
 	integer, intent(in) :: numtasks
@@ -283,11 +286,11 @@ implicit none
 			STOP
 		ENDIF
 	IATOL = 2
-	ATOL = 1D-10
-	RTOL = 1D-10
+	ATOL = 1e-10_dp
+	RTOL = 1e-10_dp
 	METH = 2
 	ITMETH = 2
-	T0=0D0
+	T0=0_dp
 	T=T0
 	ITASK = 1
 	TOUT = dt
@@ -300,8 +303,8 @@ implicit none
 
 	integer, intent(in) :: successlocal, faillocal
 	logical, intent(inout) :: allfailcheck
-	double precision, optional, intent(in) :: check
-	double precision :: ratio
+	real(dp), optional, intent(in) :: check
+	real(dp) :: ratio
 	logical, intent(in) :: printing
 
 	allfailcheck=.false.
@@ -327,7 +330,7 @@ subroutine rec_traj(Y, list)
 use linked_list
 implicit none
 
-	double precision, dimension(:), intent(in) :: Y
+	real(dp), dimension(:), intent(in) :: Y
 	type(linkedlist)  :: list
 	type(llnode), pointer :: new
 
@@ -373,8 +376,8 @@ end subroutine print_del_traj
 subroutine ic_zoom_init(y0, yref, iccounter, toler)
 implicit none
 
-	double precision, dimension(:), intent(inout) :: y0, yref
-	double precision, intent(inout) :: toler
+	real(dp), dimension(:), intent(inout) :: y0, yref
+	real(dp), intent(inout) :: toler
 	integer, intent(inout) :: iccounter
 
 	namelist / zoom / yref, toler
@@ -391,10 +394,10 @@ implicit none
 end subroutine ic_zoom_init
 
 !Euclidean metric.
-pure double precision function euclidean(pt1,pt2)
+pure real(dp) function euclidean(pt1,pt2)
 implicit none
 
-	double precision, dimension(:), intent(in) :: pt1, pt2
+	real(dp), dimension(:), intent(in) :: pt1, pt2
 
 	euclidean=sqrt(sum((pt1-pt2)*(pt1-pt2)))
 

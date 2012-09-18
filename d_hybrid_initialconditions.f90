@@ -21,22 +21,22 @@
 !**************************************************************************************
 
 module d_hybrid_initialconditions
-implicit none
+  use types, only : dp, pi
+  implicit none
  
 	!global data.
-	double precision :: phi_0, psi_0, phi_dot_0, psi_dot_0
-	double precision, parameter :: pi= 3.14159265358979323846d0
-	double precision, parameter :: m_planck=1000d0
-	double precision, parameter :: beta=8.37758040957278d0/(m_planck*m_planck)
-	double precision :: m
-	double precision :: mu
-	double precision, parameter :: phi_min=0d0
-	double precision, parameter :: phi_max=.2d0*m_planck
-	double precision, parameter :: psi_min=0d0
-	double precision, parameter :: psi_max=.2d0*m_planck
-	double precision :: nu
-	double precision :: energy_scale
-	double precision :: lambda
+	real(dp) :: phi_0, psi_0, phi_dot_0, psi_dot_0
+	real(dp), parameter :: m_planck=1000_dp
+	real(dp), parameter :: beta=8.37758040957278_dp/(m_planck*m_planck)
+	real(dp) :: m
+	real(dp) :: mu
+	real(dp), parameter :: phi_min=0_dp
+	real(dp), parameter :: phi_max=.2_dp*m_planck
+	real(dp), parameter :: psi_min=0_dp
+	real(dp), parameter :: psi_max=.2_dp*m_planck
+	real(dp) :: nu
+	real(dp) :: energy_scale
+	real(dp) :: lambda
 
 	!for the nearest neighbor sampling.
 	integer, dimension(:,:), allocatable :: numbpoints_sample
@@ -61,12 +61,12 @@ end subroutine parameters_hybrid
 !*************************************************************************************
 !function which describes the potential.
 
-pure double precision function V_h(Y)
+pure real(dp) function V_h(Y)
 implicit none
 
-	double precision, dimension(:), intent(in) :: Y
+	real(dp), dimension(:), intent(in) :: Y
 
-	V_h = (lambda*lambda*lambda*lambda)*((1D0 - ((Y(3)*Y(3))/(m*m)))**2D0 +&
+	V_h = (lambda*lambda*lambda*lambda)*((1_dp - ((Y(3)*Y(3))/(m*m)))**2_dp +&
 		& ((Y(2)*Y(2))/(mu*mu)) + ((Y(2)*Y(2)*Y(3)*Y(3))/ (nu*nu*nu*nu)))
 
 end function V_h
@@ -79,9 +79,9 @@ end function V_h
 
 subroutine D_IC_EQEN(Y,iccounter)
 implicit none
-	double precision, intent(out) :: Y(5)
+	real(dp), intent(out) :: Y(5)
 	integer, intent(in) :: iccounter
-	double precision :: rand, rho_kinetic, dot_min, dot_max
+	real(dp) :: rand, rho_kinetic, dot_min, dot_max
 	integer :: param_constr, a, b
 
 	!Gives parameter to set by energy constraint: 0~phi_dot,1~psi_dot.  The IC for iccounter equals number of parameters to oscillate between.
@@ -104,24 +104,24 @@ implicit none
 		Y(3)= (rand*(psi_max-psi_min)) + psi_min
 	
 		!Energy density remaining in kinetic term.
-		rho_kinetic = (energy_scale**4D0) - V_h(Y)
+		rho_kinetic = (energy_scale**4_dp) - V_h(Y)
 		if (rho_kinetic<0) cycle
 		!Set so that psi_dot is chosen with flat prior.
-		dot_max = SQRT(2D0*rho_kinetic)
-		dot_min = -1D0*SQRT(2D0*rho_kinetic)	
+		dot_max = SQRT(2_dp*rho_kinetic)
+		dot_min = -1_dp*SQRT(2_dp*rho_kinetic)	
 		!Sets the psi_dot IC to the range psi_dot_max to psi_dot_min
 		call random_number(rand)
 		Y(a) = (rand*(dot_max-dot_min)) + dot_min
 	
-		if(2D0*rho_kinetic - (Y(a)*Y(a)) > 0) exit	
+		if(2_dp*rho_kinetic - (Y(a)*Y(a)) > 0) exit	
 	end do
 		
 	!Set the phi_dot IC by the total energy density constraint.
 	call random_number(rand)
 	if(rand < .5) then
-		Y(b) = SQRT(2D0*rho_kinetic - (Y(a)*Y(a)))
+		Y(b) = SQRT(2_dp*rho_kinetic - (Y(a)*Y(a)))
 	else 
-		Y(b) = -1D0*SQRT(2E0*rho_kinetic - (Y(a)*Y(a)))
+		Y(b) = -1_dp*SQRT(2E0*rho_kinetic - (Y(a)*Y(a)))
 	end if	
 
 	!Set initial conditions.
@@ -132,7 +132,7 @@ implicit none
 
 
 	!Reinitialize the e-fold value: Y(1)~N.
-	Y(1)=0D0 		
+	Y(1)=0_dp 		
 
 end subroutine D_IC_EQEN
 
@@ -142,20 +142,21 @@ end subroutine D_IC_EQEN
 subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 implicit none
 
-	double precision, dimension(5), intent(in) :: y0
-	double precision, dimension(5), intent(out) :: y1
+	real(dp), dimension(5), intent(in) :: y0
+	real(dp), dimension(5), intent(out) :: y1
 	interface
 		pure function metric(pt1,pt2)
+      use types, only : dp
 			implicit none
-			double precision, dimension(:), intent(in) :: pt1, pt2
-			double precision :: metric
+			real(dp), dimension(:), intent(in) :: pt1, pt2
+			real(dp) :: metric
 		end function metric
 	end interface
-	double precision, optional, intent(in) :: en, sig
+	real(dp), optional, intent(in) :: en, sig
 	integer, intent(in) :: iccounter
-	double precision :: rand, rho_kinetic, e, tol, sgn
+	real(dp) :: rand, rho_kinetic, e, tol, sgn
 	integer :: param_constr, x, y, i
-	double precision, dimension(5) :: maxim, minim
+	real(dp), dimension(5) :: maxim, minim
 
 	!Set energy.
 	if (present(en)) then
@@ -167,12 +168,12 @@ implicit none
 	if (present(sig)) then
 		tol=sig
 	else
-		tol=1D-12
+		tol=1e-12_dp
 	end if
 
 	!Set the max and min params.
-	maxim=(y0+tol/2D0)
-	minim=(y0-tol/2D0)
+	maxim=(y0+tol/2_dp)
+	minim=(y0-tol/2_dp)
 
 	!Initialize y1.
 	y1=y0
@@ -200,11 +201,11 @@ do1:	do
 			!sets the psi_dot ic to the range psi_dot_max to psi_dot_min
 			call random_number(rand)
 			y1(y) = (rand*(maxim(y)-minim(y))) + minim(y)
-			if(2d0*rho_kinetic - (y1(5)*y1(5)) > 0) exit do2
+			if(2_dp*rho_kinetic - (y1(5)*y1(5)) > 0) exit do2
 		end do do2
 		!Set the phi_dot IC by the total energy density constraint.
 		sgn=y0(x)/abs(y0(x))
-		Y1(x) = sgn*sqrt(2D0*rho_kinetic - (Y1(y)*Y1(y)))
+		Y1(x) = sgn*sqrt(2_dp*rho_kinetic - (Y1(y)*Y1(y)))
 		!Exit condition.
 		if (metric(y0(2:5),y1(2:5)) .le. tol ) exit do1
 	end do do1
@@ -217,7 +218,7 @@ do1:	do
 
 
 	!Reinitialize the e-fold value: Y(1)~N.
-	Y1(1)=0D0 		
+	Y1(1)=0_dp 		
 
 end subroutine ic_eqen_pert
 
@@ -231,8 +232,8 @@ end subroutine ic_eqen_pert
 
 subroutine D_IC_ZEROV(Y)
 implicit none
-	double precision, intent(out) :: Y(5)
-	double precision :: rand_1, rand_2
+	real(dp), intent(out) :: Y(5)
+	real(dp) :: rand_1, rand_2
 
 	!Set IC for Y(2)~phi randomly in range phi_min to phi_max.
 	call random_number(rand_1)
@@ -245,13 +246,13 @@ implicit none
 	psi_0 = Y(3)
 
 	!Sets velocities to zero initially.
-	Y(4)=0D0
+	Y(4)=0_dp
 	phi_dot_0=Y(4)
-	Y(5)=0D0
+	Y(5)=0_dp
 	psi_dot_0=Y(5)
 
 	!Reinitialize the cosmology equation values.
-	Y(1)=0D0 
+	Y(1)=0_dp 
 		
 	
 end subroutine D_IC_ZEROV
@@ -261,13 +262,13 @@ end subroutine D_IC_ZEROV
 
 subroutine FIXED_IC(Y)
 
-	double precision, dimension(5), intent(out) :: Y
+	real(dp), dimension(5), intent(out) :: Y
 
-	phi_0 = 80.837797631740003D0
-	psi_0 =.1D-6
-	phi_dot_0 =0D0
-	psi_dot_0 =0D0
-	Y(1)=0D0
+	phi_0 = 0_dp
+	psi_0 = 4_dp*m_planck
+	phi_dot_0 =0_dp
+	psi_dot_0 =0_dp
+	Y(1)=0_dp
 	Y(2)=phi_0
 	Y(3)=psi_0
 	Y(4)=phi_dot_0
@@ -281,12 +282,12 @@ end subroutine FIXED_IC
 subroutine EQEN_SLICING(Y)
 implicit none
 
-	double precision, dimension(:), intent(out) :: Y
-	double precision :: rand_1, rand_2, rand_3, chi
-	double precision :: phi_dot_max, phi_dot_min, rho_kinetic, psi_dot_max, psi_dot_min
+	real(dp), dimension(:), intent(out) :: Y
+	real(dp) :: rand_1, rand_2, rand_3, chi
+	real(dp) :: phi_dot_max, phi_dot_min, rho_kinetic, psi_dot_max, psi_dot_min
 
 	!Initialize.
-	Y=0D0
+	Y=0_dp
 	do
           	!Set phi_0 randomly.
                 call random_number(rand_1)
@@ -299,13 +300,13 @@ implicit none
                 psi_0 = Y(3)
 
                 !Find remaining energy.
-                rho_kinetic = (energy_scale**4D0) - V_h(Y)
+                rho_kinetic = (energy_scale**4_dp) - V_h(Y)
 
                 if (rho_kinetic<0) then
 			cycle
 		end if
 
-                chi = -1D0*SQRT(rho_kinetic)
+                chi = -1_dp*SQRT(rho_kinetic)
                 Y(4)=chi
                 phi_dot_0=chi
                 Y(5)=chi
@@ -321,11 +322,11 @@ end subroutine EQEN_SLICING
 subroutine EQEN_EQVEL(Y)
 implicit none
 
-	double precision, dimension(:), intent(out) :: Y
-	double precision :: rand_1, rho_kinetic, chi
+	real(dp), dimension(:), intent(out) :: Y
+	real(dp) :: rand_1, rho_kinetic, chi
 	
 	!Initialize
-	Y=0D0
+	Y=0_dp
 
 	do
 		!Set phi_0 randomly.
@@ -339,7 +340,7 @@ implicit none
                 psi_0 = Y(3)
 
 		!Find remaining energy.
-                rho_kinetic = (energy_scale**4D0) - V_h(Y)
+                rho_kinetic = (energy_scale**4_dp) - V_h(Y)
 
 		if (rho_kinetic<0) cycle
 
@@ -364,20 +365,20 @@ subroutine ic_metr(y,sample_table,iccounter,eps,dup,test)
 use sorters, only : locate, heapsorttotal
 implicit none
 
-	double precision, dimension(:), intent(inout) :: y
-	double precision, dimension(:,:), allocatable, intent(inout) :: sample_table
-	double precision, optional, intent(inout) :: eps
+	real(dp), dimension(:), intent(inout) :: y
+	real(dp), dimension(:,:), allocatable, intent(inout) :: sample_table
+	real(dp), optional, intent(inout) :: eps
 	integer, intent(in) :: iccounter
 	integer, optional, intent(in) :: test
 	integer, optional, intent(in) :: dup
-	double precision :: accept, rand
-	double precision, dimension(5) :: yprop
+	real(dp) :: accept, rand
+	real(dp), dimension(5) :: yprop
 	integer, dimension(:,:), allocatable :: boxcover
 	integer :: i,j,k, n, start
 	logical :: check
 
 	!Load eps if not provided.
-	if (PRESENT(eps) .EQV. .FALSE.) eps=1D0
+	if (PRESENT(eps) .EQV. .FALSE.) eps=1_dp
 
 	!Load the density calculation if not already done.
 	if (allocated(numbpoints_sample) .eqv. .false.) then
@@ -468,11 +469,11 @@ end subroutine ic_metr
 subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 implicit none
 
-	double precision, dimension(:), intent(out) :: y
-	double precision, optional, intent(inout) :: eps
+	real(dp), dimension(:), intent(out) :: y
+	real(dp), optional, intent(inout) :: eps
 	integer, intent(inout) :: iccounter
 	integer, optional, intent(in) :: bperiod
-	double precision, dimension(:,:), allocatable, intent(out) :: sample_table
+	real(dp), dimension(:,:), allocatable, intent(out) :: sample_table
 	character(len=100) :: datafile
 	integer :: samp_len, samp_wid
 	integer :: i, j, iend, ierr
@@ -491,8 +492,8 @@ implicit none
 		
 	!Load the data to sample via nearest neighbor interpolation.
 	allocate(sample_table(samp_len,samp_wid))
-	sample_table=0D0
-	!Data *must* be in form Y(2),...,Y(5), where Y(1)=0D0 assumed.
+	sample_table=0_dp
+	!Data *must* be in form Y(2),...,Y(5), where Y(1)=0_dp assumed.
 	open(unit=10001, file=datafile, status="old", form="unformatted")
 	do i=1,size(sample_table,1)		
 		read(unit=10001,iostat=ierr) (sample_table(i,j),j=2,5)
@@ -522,22 +523,22 @@ end subroutine ic_metr_init
 
 !function to calculate the acceptance ratio for the Metropolis algorithm for the density function obtained in IC_METR.  Y1 is old point, Y2 is new point.
 
-double precision function accept_ratio(Y1,Y2,eps)
-USE sorters, ONLY : locate
+real(dp) function accept_ratio(Y1,Y2,eps)
+use sorters, only : locate
 implicit none
 
-	double precision, dimension(:), intent(in) :: Y1, Y2
+	real(dp), dimension(:), intent(in) :: Y1, Y2
 	integer :: start, ending, i, j
-	double precision, intent(in) :: eps
-	double precision :: a, p1,p2
+	real(dp), intent(in) :: eps
+	real(dp) :: a, p1,p2
 	integer, dimension(5) :: test
 	LOGICAL :: check
 
 	!Calc probabilities.
 	!Find where to start in table. Returns first value below Y1(2).
 	call locate(numbpoints_sample,Y1(2)/eps,start)
-	call locate(numbpoints_sample,Y1(2)/eps+1D0,ending)
-	p1=0D0
+	call locate(numbpoints_sample,Y1(2)/eps+1_dp,ending)
+	p1=0_dp
 
 	do i=start,ending
 		test=(/0,numbpoints_sample(i,1),numbpoints_sample(i,2),&
@@ -551,13 +552,13 @@ implicit none
 			end if
 		end do doj1
 		if (check) then
-			p1=numbpoints_sample(i,5)*1D0
+			p1=numbpoints_sample(i,5)*1_dp
 			exit
 		end if
 	end do
 	call locate(numbpoints_sample,Y2(2)/eps,start)
-	call locate(numbpoints_sample,Y2(2)/eps+1D0,ending)
-	p2=0D0
+	call locate(numbpoints_sample,Y2(2)/eps+1_dp,ending)
+	p2=0_dp
 	do i=start,ending
 		test=(/0, numbpoints_sample(i,1),numbpoints_sample(i,2),&
 			&numbpoints_sample(i,3),numbpoints_sample(i,4) /)
@@ -571,21 +572,25 @@ implicit none
 		end do doj2
 
 		if (check) then
-			p2=numbpoints_sample(i,5)*1D0
+			p2=numbpoints_sample(i,5)*1_dp
 			exit
 		end if
 	end do
 
-	if (p2<=1.1D0) then
-		a=0D0
+	if (p2<=1.1_dp) then
+		a=0_dp
 	!Avoid div by zero
-	else if (p1<=0D-10) then
-		a=1D0
+	else if (p1<=0e-10_dp) then
+		a=1_dp
 	else
 		a=p2/p1
 	end if
-	accept_ratio=MIN(1D0,a)
-	
+  !MIN(1_dp,a)
+  if (a<1_dp) then
+    accept_ratio=a
+  else
+    accept_ratio=1_dp
+  end if
 
 end function accept_ratio
 
@@ -595,8 +600,8 @@ end function accept_ratio
 subroutine IC_TEST(Y)
 implicit none
 
-	double precision, dimension(:), intent(out) :: Y
-	double precision :: rand_1
+	real(dp), dimension(:), intent(out) :: Y
+	real(dp) :: rand_1
 	integer :: i
 
 	do i=1,size(Y)
@@ -611,9 +616,9 @@ subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, d
 use mpi
 implicit none
 
-	double precision, dimension(:,:), allocatable :: mastertable, masttransp
-	double precision, dimension(:,:), allocatable, intent(out) :: ic_table
-	double precision, dimension(:,:), allocatable :: ic_transp
+	real(dp), dimension(:,:), allocatable :: mastertable, masttransp
+	real(dp), dimension(:,:), allocatable, intent(out) :: ic_table
+	real(dp), dimension(:,:), allocatable :: ic_transp
 	integer, intent(in) :: rank, numtasks, length, dimn
 	character(len=*), intent(in) :: fname, formt
 	integer :: i, j, n, low, receiv
@@ -657,15 +662,15 @@ end subroutine readdist_icfromfile
 subroutine ic_fromarray(y,ic_table,x)
 implicit none
 
-	double precision, dimension(:,:), intent(in) :: ic_table
-	double precision, dimension(5), intent(out) :: y
+	real(dp), dimension(:,:), intent(in) :: ic_table
+	real(dp), dimension(5), intent(out) :: y
 	integer, intent(in) :: x
 
 	y(2)=ic_table(x,2)
 	y(3)=ic_table(x,1)
 	y(4)=ic_table(x,4)
 	y(5)=ic_table(x,3)	
-	y(1)=0D0
+	y(1)=0_dp
 	phi_0 = Y(2)
 	psi_0 = Y(3)
 	psi_dot_0 = Y(5)
@@ -679,9 +684,9 @@ end subroutine ic_fromarray
 subroutine ic_file_init(y0, rank,numtasks,ic_table)
 implicit none
 
-	double precision, dimension(:), intent(out) :: y0
+	real(dp), dimension(:), intent(out) :: y0
 	integer, intent(in) :: rank, numtasks
-	double precision, dimension(:,:), allocatable, intent(out) :: ic_table
+	real(dp), dimension(:,:), allocatable, intent(out) :: ic_table
 	character(len=100) :: fname
 	character(len=100) :: fform
 	integer :: fleng, fwid
@@ -760,24 +765,24 @@ end subroutine ic_file_init
 !subroutine mcmc_eqen(ICtable)
 !implicit none
 
-!	double precision, dimension(:,:), intent(inout) :: ICtable
-!	double precision :: Y(5), Y2(5), a(9), norm(8), pert(8), params(4), params2(4)
-!	double precision :: lam_4, V, mag, KE, en_left, check
-!	double precision :: sigma(8)
-!	double precision :: tol
+!	real(dp), dimension(:,:), intent(inout) :: ICtable
+!	real(dp) :: Y(5), Y2(5), a(9), norm(8), pert(8), params(4), params2(4)
+!	real(dp) :: lam_4, V, mag, KE, en_left, check
+!	real(dp) :: sigma(8)
+!	real(dp) :: tol
 !	integer :: iccounter, i, j, k, k_1, k_2, l, i_1, counter
 !	LOGICAL :: onsurf, bounds
 
 	!Load tolerance and normal's sigma.
-!	tol = 1D-6
-!	sigma(1) = 10D0			!Phi
-!	sigma(2) = 10D0			!Psi
-!	sigma(3) = 100D0		!Phi_dot
-!	sigma(4) = 100D0		!Psi_dot
-!	sigma(5) = 100D0		!Lambda
-!	sigma(6) = 10D0			!M
-!	sigma(7) = 10D0			!mu
-!	sigma(8) = 10D0			!nu
+!	tol = 1e-6_dp
+!	sigma(1) = 10_dp			!Phi
+!	sigma(2) = 10_dp			!Psi
+!	sigma(3) = 100_dp		!Phi_dot
+!	sigma(4) = 100_dp		!Psi_dot
+!	sigma(5) = 100_dp		!Lambda
+!	sigma(6) = 10_dp			!M
+!	sigma(7) = 10_dp			!mu
+!	sigma(8) = 10_dp			!nu
 
 	!First pick a point on eq en surface.
 !	iccounter = 0
@@ -799,19 +804,19 @@ end subroutine ic_file_init
 		!a_1*(f_dot)+a_2*(s_dot)+a_3*(f)+a_4*(s)+
 		!a_5(l)+a_6*(m)+a_7*(z)+a_8*(n)+a_9=0
 !		lam_4 = params(1)**4
-!		V = lam_4*((1D0-((Y(3)*Y(3))/(params(2)*params(2))))**2D0+&
+!		V = lam_4*((1_dp-((Y(3)*Y(3))/(params(2)*params(2))))**2_dp+&
 !			&((Y(2)*Y(2))/(params(3)*params(3)))+&
-!			&((Y(2)*Y(2)*Y(3)*Y(3))/(params(4)**4D0)))
+!			&((Y(2)*Y(2)*Y(3)*Y(3))/(params(4)**4_dp)))
 !		a(1) = Y(4)
 !		a(2) = Y(5)
-!		a(3) = 2D0*lam_4*Y(2)*(1D0/(mu*mu)+(Y(3)*Y(3))/(nu*nu*nu*nu))
-!		a(4) = 2D0*lam_4*Y(3)*((Y(2)*Y(2))/(nu*nu*nu*nu)-&
-!			&(2D0*Y(3)*Y(3))/(M*M*M*M)-2D0/(M*M))
-!		a(5) = (4D0/lambda)*V
-!		a(6) = ((4D0*lam_4*Y(2)*Y(2))/(M*M*M))*(1D0 + (Y(2)*Y(2))/(M*M))
-!		a(7) = -2D0*lam_4*Y(2)*Y(2)/(mu*mu*mu)
-!		a(8) = -4D0*lam_4*Y(2)*Y(2)*Y(3)*Y(3)/(nu*nu*nu*nu*nu)
-!		a(9) = .5D0*(Y(4)*Y(4)+Y(5)*Y(5)) + V - energy_scale**4
+!		a(3) = 2_dp*lam_4*Y(2)*(1_dp/(mu*mu)+(Y(3)*Y(3))/(nu*nu*nu*nu))
+!		a(4) = 2_dp*lam_4*Y(3)*((Y(2)*Y(2))/(nu*nu*nu*nu)-&
+!			&(2_dp*Y(3)*Y(3))/(M*M*M*M)-2_dp/(M*M))
+!		a(5) = (4_dp/lambda)*V
+!		a(6) = ((4_dp*lam_4*Y(2)*Y(2))/(M*M*M))*(1_dp + (Y(2)*Y(2))/(M*M))
+!		a(7) = -2_dp*lam_4*Y(2)*Y(2)/(mu*mu*mu)
+!		a(8) = -4_dp*lam_4*Y(2)*Y(2)*Y(3)*Y(3)/(nu*nu*nu*nu*nu)
+!		a(9) = .5_dp*(Y(4)*Y(4)+Y(5)*Y(5)) + V - energy_scale**4
 		!Normalize.
 !		mag = SQRT(a(1)*a(1)+a(2)*a(2)+a(3)*a(3)+a(4)*a(4)+a(5)*a(5)+&
 !			&a(6)*a(6)+a(7)*a(7)+a(8)*a(8))
@@ -821,7 +826,7 @@ end subroutine ic_file_init
 
 		!Perturb each parameter by Gaussian with mean=0.
 !		do j=1,8
-!			pert(j) = normal(0D0, sigma(j))
+!			pert(j) = normal(0_dp, sigma(j))
 !		end do
 
 		!Create new point.
@@ -837,10 +842,10 @@ end subroutine ic_file_init
 !		call proj_eqen(Y2,Y,params2,params,norm,tol)
 
 		!Double check if on eq en surface
-!		V = (params2(1)**4)*((1D0-((Y2(3)*Y2(3))/(params2(2)*params2(2))))**2D0 +&
+!		V = (params2(1)**4)*((1_dp-((Y2(3)*Y2(3))/(params2(2)*params2(2))))**2_dp +&
 !			&((Y2(2)*Y2(2))/(params2(3)*params2(3))) + &
 !			&((Y2(2)*Y2(2)*Y2(3)*Y2(3))/(params2(4)**4)))
-!		KE = .5D0*(Y2(4)*Y2(4)+Y2(5)*Y2(5))
+!		KE = .5_dp*(Y2(4)*Y2(4)+Y2(5)*Y2(5))
 !		en_left = energy_scale**4 - KE - V
 !		if(ABS(en_left) .LE. tol) then
 !			onsurf = .TRUE.
@@ -891,8 +896,8 @@ end subroutine ic_file_init
 function projection(vect, norm)
 implicit none
 
-	double precision, dimension(:) :: vect, norm
-	double precision, dimension(size(vect)) :: projection
+	real(dp), dimension(:) :: vect, norm
+	real(dp), dimension(size(vect)) :: projection
 	
 	projection = vect - norm*dot_product(vect,norm)
 
@@ -905,83 +910,83 @@ end function projection
 
 !Subroutine which takes the perturbed vector Y=Y0+pert and params=params0+pert and projects them down the normal direction until they lie within tol of the equal energy slice.
 
-subroutine proj_eqen(Y,Y0,params,params0,normal,tol)
-implicit none
-
-	double precision, dimension(:), intent(inout) :: Y, params
-	double precision, dimension(:), intent(in) :: normal, Y0, params0
-	double precision, dimension(size(normal)) :: norm
-	double precision, intent(in) :: tol
-	double precision, dimension(size(Y)-1+size(params)) :: vect, vect_norm
-	double precision :: alpha, V0, KE, en_left, en_left2, check, checknorm
-	integer :: i_1, i_2, i_3, i_4, i_5, i_6, i_7, counter
-	
-	norm = normal
-	counter = 0
-
-	!Load perturbed vector.
-	do i_1=1,4
-		vect(i_1)=Y(i_1+1)
-	end do
-	do i_2=1,4
-		vect(i_2+4)=params(i_2)
-	end do
-	!Load initial vector.
-	do i_6=1,4
-		vect_norm(i_6) = Y0(i_6+1)
-	end do
-	do i_7=1,4
-		vect_norm(i_7+4) = params0(i_7)
-	end do
-
-	!Check if on eq en slice.
-	en_left = en_diff(vect)
-print*,"Projection en left1 ", en_left
-	if(ABS(en_left)<=tol) RETURN
-
-	!Determine which way normal points and adjust to move onto eq en slice.
-	vect_norm = vect_norm + norm
-	checknorm = en_diff(vect_norm)
-print*,"Checknorm ",checknorm
-	if(checknorm*en_left<0)then
-		norm = (-1D0)*norm
-	end if
-
-	!Step size.
-	alpha = en_left*.001D0
-
-	!Move to eq en slice.
-	do i_5=1,500000
-		!Translate down norm by alpha.
-		vect = vect - alpha*norm
-		
-		en_left2 = en_diff(vect)
-
-!print*,"Projection en left 2", en_left2
-		
-		!Check for overshoot.
-		if(en_left2*en_left<0)then
-			en_left = en_left2
-			norm = -1D0*norm
-			alpha = alpha*.001D0
-print*,"Overshoot test"
-		end if
-
-		if(ABS(en_left2)<=tol) exit 
-		
-	end do
-
-	!Rebuild Y and params.
-	do i_3=1,4
-		Y(i_3+1)=vect(i_3)
-	end do
-	do i_4=1,4
-		params(i_4)=vect(i_4+4)
-	end do
-print*,"Y ",Y
-print*,"Params",params	
-
-end subroutine proj_eqen
+!subroutine proj_eqen(Y,Y0,params,params0,normal,tol)
+!implicit none
+!
+!	real(dp), dimension(:), intent(inout) :: Y, params
+!	real(dp), dimension(:), intent(in) :: normal, Y0, params0
+!	real(dp), dimension(size(normal)) :: norm
+!	real(dp), intent(in) :: tol
+!	real(dp), dimension(size(Y)-1+size(params)) :: vect, vect_norm
+!	real(dp) :: alpha, V0, KE, en_left, en_left2, check, checknorm
+!	integer :: i_1, i_2, i_3, i_4, i_5, i_6, i_7, counter
+!	
+!	norm = normal
+!	counter = 0
+!
+!	!Load perturbed vector.
+!	do i_1=1,4
+!		vect(i_1)=Y(i_1+1)
+!	end do
+!	do i_2=1,4
+!		vect(i_2+4)=params(i_2)
+!	end do
+!	!Load initial vector.
+!	do i_6=1,4
+!		vect_norm(i_6) = Y0(i_6+1)
+!	end do
+!	do i_7=1,4
+!		vect_norm(i_7+4) = params0(i_7)
+!	end do
+!
+!	!Check if on eq en slice.
+!	en_left = en_diff(vect)
+!print*,"Projection en left1 ", en_left
+!	if(ABS(en_left)<=tol) RETURN
+!
+!	!Determine which way normal points and adjust to move onto eq en slice.
+!	vect_norm = vect_norm + norm
+!	checknorm = en_diff(vect_norm)
+!print*,"Checknorm ",checknorm
+!	if(checknorm*en_left<0)then
+!		norm = (-1_dp)*norm
+!	end if
+!
+!	!Step size.
+!	alpha = en_left*.001_dp
+!
+!	!Move to eq en slice.
+!	do i_5=1,500000
+!		!Translate down norm by alpha.
+!		vect = vect - alpha*norm
+!		
+!		en_left2 = en_diff(vect)
+!
+!!print*,"Projection en left 2", en_left2
+!		
+!		!Check for overshoot.
+!		if(en_left2*en_left<0)then
+!			en_left = en_left2
+!			norm = -1_dp*norm
+!			alpha = alpha*.001_dp
+!print*,"Overshoot test"
+!		end if
+!
+!		if(ABS(en_left2)<=tol) exit 
+!		
+!	end do
+!
+!	!Rebuild Y and params.
+!	do i_3=1,4
+!		Y(i_3+1)=vect(i_3)
+!	end do
+!	do i_4=1,4
+!		params(i_4)=vect(i_4+4)
+!	end do
+!print*,"Y ",Y
+!print*,"Params",params	
+!
+!end subroutine proj_eqen
 
 
 
@@ -993,19 +998,19 @@ end subroutine proj_eqen
 subroutine SEED_IC_EQEN(Y)
 implicit none
 
-	double precision, dimension(:), intent(inout) :: Y
-	double precision ::  rand_1, rand_2, V, left
+	real(dp), dimension(:), intent(inout) :: Y
+	real(dp) ::  rand_1, rand_2, V, left
 
 	do
-	Y(1)=0D0
-	Y(4)=0D0
+	Y(1)=0_dp
+	Y(4)=0_dp
 	call random_number(rand_1)
 	call random_number(rand_2)
 	Y(2) = rand_2 *(phi_max-phi_min)+phi_min
 	Y(3) = rand_1 *(psi_max-psi_min)+psi_min
-	V = (lambda**4D0)*((1D0-((Y(3)*Y(3))/(m*m)))**2D0 +((Y(2)*Y(2))/(mu*mu)) + &
-		&((Y(2)*Y(2)*Y(3)*Y(3))/ (nu**4D0)))
-	left = 2D0*(energy_scale**4 - V)
+	V = (lambda**4_dp)*((1_dp-((Y(3)*Y(3))/(m*m)))**2_dp +((Y(2)*Y(2))/(mu*mu)) + &
+		&((Y(2)*Y(2)*Y(3)*Y(3))/ (nu**4_dp)))
+	left = 2_dp*(energy_scale**4 - V)
 	if(left<0) then
 		cycle
 	else
@@ -1020,23 +1025,46 @@ end subroutine SEED_IC_EQEN
 !*****************************************************************************************
 !Function which will return the amount of difference in energy between a point in R^n and the surface E^4.
 
-double precision function en_diff(vect)
-implicit none
+!real(dp) function en_diff(vect)
+!implicit none
+!
+!	real(dp), dimension(8) :: vect
+!	real(dp) :: V0, KE
+!
+!	V0 = (vect(5)**4)*((1_dp-((vect(2)*vect(2))/(vect(6)*vect(6))))**2_dp +&
+!		&((vect(1)*vect(1))/(vect(7)*vect(7))) + &
+!		&((vect(1)*vect(1)*vect(2)*vect(2))/(vect(8)**4)))
+!	KE = .5_dp*(vect(3)*vect(3)+vect(4)*vect(4))
+!	en_diff = energy_scale**4 - KE -V0
+!
+!end function en_diff 
 
-	double precision, dimension(8) :: vect
-	double precision :: V0, KE
+!Calculates the energy missing.  Send the function all of the given variables.
+!The energy remaining for the variable which isn't sent to the function will be
+!returned.
+!pure real(dp) function en_diff(phi,psi,phiv,psiv)
+!  implicit none
+!
+!  real(dp), optional, intent(in) :: phi, psi, phiv, psiv
+!  real(dp), dimension(5) :: y
+!
+!  if (.not. present(phiv)) then
+!    en_diff=energy_scale**4-.5_dp*(psiv**2)-v_h(phi,psi)
+!  else if (.not. present(psiv)) then
+!    en_diff=energy_scale**4-.5_dp*(phiv**2)-v_h(phi,psi)
+!  else if (.not. present(phi)) then
+!    en_diff=energy_scale**4-.5_dp*(phiv**2+psiv**2)-v_h(0_dp,psi)
+!  else if (.not. present(psi)) then
+!    en_diff=energy_scale**4-.5_dp*(phiv**2+psiv**2)-v_h(phi,m)
+!  end if
+!
+!end function en_diff
 
-	V0 = (vect(5)**4)*((1D0-((vect(2)*vect(2))/(vect(6)*vect(6))))**2D0 +&
-		&((vect(1)*vect(1))/(vect(7)*vect(7))) + &
-		&((vect(1)*vect(1)*vect(2)*vect(2))/(vect(8)**4)))
-	KE = .5D0*(vect(3)*vect(3)+vect(4)*vect(4))
-	en_diff = energy_scale**4 - KE -V0
-
-end function en_diff 
 
 
 
 
 
 
-end MODULE d_hybrid_initialconditions
+
+end module d_hybrid_initialconditions
