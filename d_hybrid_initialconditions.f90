@@ -23,7 +23,7 @@
 module d_hybrid_initialconditions
   use types, only : dp, pi
   implicit none
- 
+
 	!global data.
 	real(dp) :: phi_0, psi_0, phi_dot_0, psi_dot_0
 	real(dp), parameter :: m_planck=1000_dp
@@ -50,11 +50,12 @@ contains
 !Subroutine which declares potential parameters for hybrid inflation.
 
 subroutine parameters_hybrid()
-implicit none
+	implicit none
+  integer :: u
 
-	open(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
-	read(unit=10000, nml=parameters)
-	close(unit=10000)
+	open(newunit=u, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+	read(unit=u, nml=parameters)
+	close(unit=u)
 
 end subroutine parameters_hybrid
 
@@ -62,7 +63,7 @@ end subroutine parameters_hybrid
 !function which describes the potential.
 
 pure real(dp) function V_h(Y)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(in) :: Y
 
@@ -78,7 +79,7 @@ end function V_h
 !This subroutine will set the initial conditions on an equal energy slice at the start of inflation that corresponds to the value energy_scale which is specified in the parameter declaration in the main program.
 
 subroutine D_IC_EQEN(Y,iccounter)
-implicit none
+	implicit none
 	real(dp), intent(out) :: Y(5)
 	integer, intent(in) :: iccounter
 	real(dp) :: rand, rho_kinetic, dot_min, dot_max
@@ -130,7 +131,6 @@ implicit none
 	psi_dot_0 = Y(5)
 	phi_dot_0 = Y(4)
 
-
 	!Reinitialize the e-fold value: Y(1)~N.
 	Y(1)=0_dp 		
 
@@ -140,7 +140,7 @@ end subroutine D_IC_EQEN
 !Subroutine which will take one pt y0 and give another point y1 that is very close to it, but also on the equal energy slice.  
 
 subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
-implicit none
+	implicit none
 
 	real(dp), dimension(5), intent(in) :: y0
 	real(dp), dimension(5), intent(out) :: y1
@@ -216,7 +216,6 @@ do1:	do
 	psi_dot_0 = Y1(5)
 	phi_dot_0 = Y1(4)
 
-
 	!Reinitialize the e-fold value: Y(1)~N.
 	Y1(1)=0_dp 		
 
@@ -231,7 +230,7 @@ end subroutine ic_eqen_pert
 !Program subroutine: This subroutine will follow the results of Clesse and set the initial values of the velocity parameters to zero and choose the initial conditions of the fields at random.
 
 subroutine D_IC_ZEROV(Y)
-implicit none
+	implicit none
 	real(dp), intent(out) :: Y(5)
 	real(dp) :: rand_1, rand_2
 
@@ -280,7 +279,7 @@ end subroutine FIXED_IC
 !Subroutine that slices the eqen surface.  This particular choice sets psi_0=0 so that all the initial conditions are set in (if the velocities were then zero) the inflationary valley.  psi_dot_0 is set by the energy constraint so that we can plot phi_0 vs phi_dot_0 as a two-dimensional representation of the three-dimensional slice.
 
 subroutine EQEN_SLICING(Y)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(out) :: Y
 	real(dp) :: rand_1, rand_2, rand_3, chi
@@ -320,7 +319,7 @@ implicit none
 end subroutine EQEN_SLICING
 
 subroutine EQEN_EQVEL(Y)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(out) :: Y
 	real(dp) :: rand_1, rho_kinetic, chi
@@ -362,8 +361,8 @@ end subroutine EQEN_EQVEL
 !subroutine that will take as input a point Y0 and a sample table, sample_table.  This subroutine will perform a nearest neighbor interpolation on sample_table with respect to the density of points, within a given box size, eps.  By default this will not give duplicates, i.e. Y_init != Y_fin.  If you want to override this, specify dup=1 .
 
 subroutine ic_metr(y,sample_table,iccounter,eps,dup,test)
-use sorters, only : locate, heapsorttotal
-implicit none
+	use sorters, only : locate, heapsorttotal
+	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y
 	real(dp), dimension(:,:), allocatable, intent(inout) :: sample_table
@@ -467,7 +466,7 @@ end subroutine ic_metr
 
 !Subroutine that initializes the IC_METR routine.  This loads the sample_table from a file and does a burn in period.  Eps is the size of the coarse-graining for the interpolant.
 subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(out) :: y
 	real(dp), optional, intent(inout) :: eps
@@ -476,7 +475,7 @@ implicit none
 	real(dp), dimension(:,:), allocatable, intent(out) :: sample_table
 	character(len=100) :: datafile
 	integer :: samp_len, samp_wid
-	integer :: i, j, iend, ierr
+	integer :: i, j, iend, ierr, u
 
 	namelist /sample/ samp_len, samp_wid, datafile
 
@@ -484,22 +483,22 @@ implicit none
 	call D_IC_EQEN(Y,iccounter)
 
 	!Get info on sample table from namelist.
-	open(unit=10000, file="parameters_hybrid.txt", status="old",&
+	open(newunit=u, file="parameters_hybrid.txt", status="old",&
 	& delim = "apostrophe")
-	read(unit=10000, nml=sample)
-	close(unit=10000)
+	read(unit=u, nml=sample)
+	close(unit=u)
 	datafile=trim(datafile)
 		
 	!Load the data to sample via nearest neighbor interpolation.
 	allocate(sample_table(samp_len,samp_wid))
 	sample_table=0_dp
 	!Data *must* be in form Y(2),...,Y(5), where Y(1)=0_dp assumed.
-	open(unit=10001, file=datafile, status="old", form="unformatted")
+	open(newunit=u, file=datafile, status="old", form="unformatted")
 	do i=1,size(sample_table,1)		
-		read(unit=10001,iostat=ierr) (sample_table(i,j),j=2,5)
+		read(unit=u,iostat=ierr) (sample_table(i,j),j=2,5)
 		if (is_iostat_end(ierr)) exit
 	end do
-	close(unit=10001)
+	close(unit=u)
 
 	!Burn in.
 	if (present(bperiod)) then
@@ -524,8 +523,8 @@ end subroutine ic_metr_init
 !function to calculate the acceptance ratio for the Metropolis algorithm for the density function obtained in IC_METR.  Y1 is old point, Y2 is new point.
 
 real(dp) function accept_ratio(Y1,Y2,eps)
-use sorters, only : locate
-implicit none
+	use sorters, only : locate
+	implicit none
 
 	real(dp), dimension(:), intent(in) :: Y1, Y2
 	integer :: start, ending, i, j
@@ -598,7 +597,7 @@ end function accept_ratio
 
 !Gives uniform sample of IC from 0-1.  GOOD FOR TESTING.
 subroutine IC_TEST(Y)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(out) :: Y
 	real(dp) :: rand_1
@@ -613,8 +612,8 @@ end subroutine IC_TEST
 
 !Subroutine to open a file to read ICs from.  File has "length" x "dimn"-dimensional points, which are both passed as arguments to this routine.  Reads into temporary array from rank=0 (master), then scatters pieces to other threads in variable ic_table.
 subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, dimn)
-use mpi
-implicit none
+	use mpi
+	implicit none
 
 	real(dp), dimension(:,:), allocatable :: mastertable, masttransp
 	real(dp), dimension(:,:), allocatable, intent(out) :: ic_table
@@ -622,7 +621,7 @@ implicit none
 	integer, intent(in) :: rank, numtasks, length, dimn
 	character(len=*), intent(in) :: fname, formt
 	integer :: i, j, n, low, receiv
-	integer :: ierr
+	integer :: ierr, u
 
 	!Make the ic_table for each thread.
 	!Find how many ICs to give to each thread.  Note, some will be lost bc
@@ -636,11 +635,11 @@ implicit none
 	!will be in row-major order and scatter works in column-major order for Fortran.
 	if (rank==0) then
 		!Read.
-		open(unit=2718281,file=fname,form=formt,status="old")
+		open(newunit=u,file=fname,form=formt,status="old")
 		do i=1,length
-			read(2718281), (mastertable(i,j),j=1,dimn)
+			read(u), (mastertable(i,j),j=1,dimn)
 		end do
-		close(2718281)
+		close(u)
 		masttransp=transpose(mastertable)
 		deallocate(mastertable)
 	end if
@@ -660,7 +659,7 @@ end subroutine readdist_icfromfile
 
 !Subroutine to get the xth initial condition from an array ic_table.
 subroutine ic_fromarray(y,ic_table,x)
-implicit none
+	implicit none
 
 	real(dp), dimension(:,:), intent(in) :: ic_table
 	real(dp), dimension(5), intent(out) :: y
@@ -682,21 +681,21 @@ end subroutine ic_fromarray
 
 !Subroutine that initializes the file to read from.
 subroutine ic_file_init(y0, rank,numtasks,ic_table)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(out) :: y0
 	integer, intent(in) :: rank, numtasks
 	real(dp), dimension(:,:), allocatable, intent(out) :: ic_table
 	character(len=100) :: fname
 	character(len=100) :: fform
-	integer :: fleng, fwid
+	integer :: fleng, fwid, u
 
 	namelist /filetoread/ fname, fleng, fwid, fform
 
 	!Open parameter file and read namelist.
-	open(unit=14142,file="parameters_hybrid.txt", status="old", delim = "apostrophe")
-	read(unit=14142, nml=filetoread)
-	close(unit=14142)
+	open(newunit=u,file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+	read(unit=u, nml=filetoread)
+	close(unit=u)
 	fname=trim(fname)
 	fform=trim(fform)
 
@@ -763,7 +762,7 @@ end subroutine ic_file_init
 
 
 !subroutine mcmc_eqen(ICtable)
-!implicit none
+!	implicit none
 
 !	real(dp), dimension(:,:), intent(inout) :: ICtable
 !	real(dp) :: Y(5), Y2(5), a(9), norm(8), pert(8), params(4), params2(4)
@@ -894,7 +893,7 @@ end subroutine ic_file_init
 !Function that takes an m-D vector and gives the projection of that vector onto the (m-1)-D tangent space with normal, norm.  If the normal is a unit coordinate, then the normal direction will have a value of zero.  Euclidean.
 
 function projection(vect, norm)
-implicit none
+	implicit none
 
 	real(dp), dimension(:) :: vect, norm
 	real(dp), dimension(size(vect)) :: projection
@@ -911,7 +910,7 @@ end function projection
 !Subroutine which takes the perturbed vector Y=Y0+pert and params=params0+pert and projects them down the normal direction until they lie within tol of the equal energy slice.
 
 !subroutine proj_eqen(Y,Y0,params,params0,normal,tol)
-!implicit none
+!	implicit none
 !
 !	real(dp), dimension(:), intent(inout) :: Y, params
 !	real(dp), dimension(:), intent(in) :: normal, Y0, params0
@@ -996,7 +995,7 @@ end function projection
 !Subroutine which seeds the MCMC routine somewhere on the equal energy slice.
 
 subroutine SEED_IC_EQEN(Y)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(inout) :: Y
 	real(dp) ::  rand_1, rand_2, V, left
@@ -1026,7 +1025,7 @@ end subroutine SEED_IC_EQEN
 !Function which will return the amount of difference in energy between a point in R^n and the surface E^4.
 
 !real(dp) function en_diff(vect)
-!implicit none
+!	implicit none
 !
 !	real(dp), dimension(8) :: vect
 !	real(dp) :: V0, KE
@@ -1043,7 +1042,7 @@ end subroutine SEED_IC_EQEN
 !The energy remaining for the variable which isn't sent to the function will be
 !returned.
 !pure real(dp) function en_diff(phi,psi,phiv,psiv)
-!  implicit none
+!  	implicit none
 !
 !  real(dp), optional, intent(in) :: phi, psi, phiv, psiv
 !  real(dp), dimension(5) :: y

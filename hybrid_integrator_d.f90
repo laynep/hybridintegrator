@@ -14,13 +14,13 @@
 
 
 program hybrid_integrator_d
-use d_hybrid_initialconditions
-use hybrid_subroutines
-use rng
-use mpi
-use linked_list
-use types, only : dp
-implicit none
+  use d_hybrid_initialconditions
+  use hybrid_subroutines
+  use rng
+  use mpi
+  use linked_list
+  use types, only : dp
+  implicit none
 
 	!Main variables.
 	real(dp), dimension(5) :: y, y0		!The fields.

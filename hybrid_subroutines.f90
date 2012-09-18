@@ -7,7 +7,7 @@ contains
 
 !Open the files to write the successful and failure points to for each thread.
 subroutine open_hybridfiles(rank,numtasks,sucunit,failunit, datatype, formt)
-implicit none
+	implicit none
 
 	integer, intent(in) :: rank, numtasks
 	integer, intent(out) :: sucunit, failunit
@@ -41,7 +41,7 @@ end subroutine open_hybridfiles
 
 !Opens files for storing the trajectories.
 subroutine open_trajfiles(rank, trajnumb, datatype, formt)
-implicit none
+	implicit none
 
 	integer, intent(in) :: rank
 	integer, intent(out) :: trajnumb
@@ -69,7 +69,7 @@ end subroutine open_trajfiles
 
 !Print the initial stats to file info.200.
 subroutine hybrid_initstats(ic,printing,infounit)
-implicit none
+	implicit none
 	
 	integer, intent(in) :: ic
 	integer, optional, intent(in) :: infounit
@@ -124,7 +124,7 @@ end subroutine hybrid_initstats
 !Print the final stats to info.200.
 subroutine hybrid_finalstats(ic, counter, failcount, badfieldcounter, &
 		& errorcount, printing,  infounit)
-implicit none
+	implicit none
 
 	integer, intent(inout) :: ic, counter, failcount, badfieldcounter, errorcount
 	integer, optional, intent(in) :: infounit
@@ -174,7 +174,7 @@ end subroutine hybrid_finalstats
 
 !Get a new point with method specified by "IC."
 subroutine new_point(y0,iccounter,sample_table,ic, ic_table, yref, toler)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y0
 	real(dp), dimension(:), optional, intent(inout) :: yref
@@ -206,7 +206,7 @@ end subroutine new_point
 !Determine if an iteration of the integrator has reached a success or failure condition yet.  If it has, then this routine returns "leave=.true." -- an exit condition for the loop in the main program.
 subroutine succ_or_fail(Y, success, successlocal, faillocal, &
 		&sucunit, failunit, ic, leave, printing)
-implicit none
+	implicit none
 
 	integer, intent(inout) :: success, successlocal, faillocal, sucunit, failunit, ic
 	real(dp), dimension(:), intent(inout) :: Y
@@ -254,7 +254,7 @@ end subroutine succ_or_fail
 !Set some necessary parameters for the integrator FCVODE.
 subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout, dt)
-implicit none
+	implicit none
 
 	!FCVODE PARAMS
 	real(dp), intent(out) :: RPAR(5)
@@ -299,10 +299,10 @@ end subroutine set_paramsFCVODE
 
 !Subroutine to check whether the integrator is giving any success points.  If check is present, then this will also check to see if the ratio of succ to fail points is less than check.
 subroutine all_fail_check(successlocal, faillocal, allfailcheck, printing, check)
-implicit none
+	implicit none
 
 	integer, intent(in) :: successlocal, faillocal
-	logical, intent(inout) :: allfailcheck
+	logical, intent(out) :: allfailcheck
 	real(dp), optional, intent(in) :: check
 	real(dp) :: ratio
 	logical, intent(in) :: printing
@@ -327,8 +327,8 @@ end subroutine all_fail_check
 
 !Subroutine to record the trajectory in a linked list..
 subroutine rec_traj(Y, list)
-use linked_list
-implicit none
+	use linked_list
+	implicit none
 
 	real(dp), dimension(:), intent(in) :: Y
 	type(linkedlist)  :: list
@@ -344,8 +344,8 @@ end subroutine rec_traj
 
 !Prints the linked list and then deletes it.
 subroutine print_del_traj(list, numb)
-use linked_list
-implicit none
+	use linked_list
+	implicit none
 
 	type(linkedlist), intent(inout) :: list
 	type(llnode), pointer :: move
@@ -374,7 +374,7 @@ end subroutine print_del_traj
 
 !Subroutine which will initialize the zoom-in technique.  Finds a reference point from namelist and returns one point on the equal energy surface, a distance "tol" away from yref.  Uses the Euclidean metric on field space.
 subroutine ic_zoom_init(y0, yref, iccounter, toler)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y0, yref
 	real(dp), intent(inout) :: toler
@@ -395,7 +395,7 @@ end subroutine ic_zoom_init
 
 !Euclidean metric.
 pure real(dp) function euclidean(pt1,pt2)
-implicit none
+	implicit none
 
 	real(dp), dimension(:), intent(in) :: pt1, pt2
 
@@ -409,63 +409,4 @@ end function euclidean
 
 
 end module hybrid_subroutines
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
