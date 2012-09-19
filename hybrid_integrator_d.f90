@@ -20,6 +20,7 @@ program hybrid_integrator_d
   use mpi
   use linked_list
   use types, only : dp
+  use features, only : newunit
   implicit none
 
 	!Main variables.
@@ -33,7 +34,7 @@ program hybrid_integrator_d
 	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
 		& errorlocal, ierr, rc
 	!Program variables.
-	integer :: ic, trajnumb, points
+	integer :: ic, trajnumb, points, u
 	real(dp) :: check, v, ratio, toler
 	logical :: leave, allfailcheck, printing, traj
 	logical :: integr_ch
@@ -58,9 +59,9 @@ program hybrid_integrator_d
 
 	!Read numb of (data points per numb of processes) & IC type from file.
 	!Do we want to print to stdout?  Do we want to record the trajectory?
-	open(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
-	read(unit=10000, nml=ics)
-	close(unit=10000)
+	open(unit=newunit(u), file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+	read(unit=u, nml=ics)
+	close(unit=u)
 
 	!Global counters.
 	counter = 0

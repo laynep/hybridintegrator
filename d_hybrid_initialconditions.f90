@@ -50,10 +50,12 @@ contains
 !Subroutine which declares potential parameters for hybrid inflation.
 
 subroutine parameters_hybrid()
-	implicit none
-  integer :: u
+  use features, only : newunit
+  implicit none
 
-	open(newunit=u, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+  integer :: u
+  !Use the function newunit to be compatible with older versions of gfortran.
+	open(unit=newunit(u), file="parameters_hybrid.txt", status="old", delim = "apostrophe")
 	read(unit=u, nml=parameters)
 	close(unit=u)
 
@@ -80,7 +82,8 @@ end function V_h
 
 subroutine D_IC_EQEN(Y,iccounter)
 	implicit none
-	real(dp), intent(out) :: Y(5)
+
+  real(dp), intent(out) :: Y(5)
 	integer, intent(in) :: iccounter
 	real(dp) :: rand, rho_kinetic, dot_min, dot_max
 	integer :: param_constr, a, b
@@ -231,7 +234,8 @@ end subroutine ic_eqen_pert
 
 subroutine D_IC_ZEROV(Y)
 	implicit none
-	real(dp), intent(out) :: Y(5)
+
+  real(dp), intent(out) :: Y(5)
 	real(dp) :: rand_1, rand_2
 
 	!Set IC for Y(2)~phi randomly in range phi_min to phi_max.
@@ -260,6 +264,7 @@ end subroutine D_IC_ZEROV
 !Fixed initial conditions set here.
 
 subroutine FIXED_IC(Y)
+  implicit none
 
 	real(dp), dimension(5), intent(out) :: Y
 
@@ -288,32 +293,32 @@ subroutine EQEN_SLICING(Y)
 	!Initialize.
 	Y=0_dp
 	do
-          	!Set phi_0 randomly.
-                call random_number(rand_1)
-                Y(2)=(rand_1*(phi_max-phi_min)) + phi_min
-                phi_0 = Y(2)
+   	!Set phi_0 randomly.
+    call random_number(rand_1)
+    Y(2)=(rand_1*(phi_max-phi_min)) + phi_min
+    phi_0 = Y(2)
 
-                !Set psi_0 randomly.
-                call random_number(rand_1)
-                Y(3)=(rand_1*(psi_max-psi_min)) + psi_min
-                psi_0 = Y(3)
+    !Set psi_0 randomly.
+    call random_number(rand_1)
+    Y(3)=(rand_1*(psi_max-psi_min)) + psi_min
+    psi_0 = Y(3)
 
-                !Find remaining energy.
-                rho_kinetic = (energy_scale**4_dp) - V_h(Y)
+    !Find remaining energy.
+     rho_kinetic = (energy_scale**4_dp) - V_h(Y)
 
-                if (rho_kinetic<0) then
+    if (rho_kinetic<0) then
 			cycle
 		end if
 
-                chi = -1_dp*SQRT(rho_kinetic)
-                Y(4)=chi
-                phi_dot_0=chi
-                Y(5)=chi
-                psi_dot_0=chi
+    chi = -1_dp*SQRT(rho_kinetic)
+    Y(4)=chi
+    phi_dot_0=chi
+    Y(5)=chi
+    psi_dot_0=chi
 
-                exit
+    exit
 
-        end do
+   end do
 
 
 end subroutine EQEN_SLICING
@@ -329,17 +334,17 @@ subroutine EQEN_EQVEL(Y)
 
 	do
 		!Set phi_0 randomly.
-                call random_number(rand_1)
-                Y(2)=(rand_1*(phi_max-phi_min)) + phi_min
-                phi_0 = Y(2)
+    call random_number(rand_1)
+    Y(2)=(rand_1*(phi_max-phi_min)) + phi_min
+    phi_0 = Y(2)
 
 		!Set psi_0 randomly.
-                call random_number(rand_1)
-                Y(3)=(rand_1*(psi_max-psi_min)) + psi_min
-                psi_0 = Y(3)
+    call random_number(rand_1)
+    Y(3)=(rand_1*(psi_max-psi_min)) + psi_min
+    psi_0 = Y(3)
 
 		!Find remaining energy.
-                rho_kinetic = (energy_scale**4_dp) - V_h(Y)
+    rho_kinetic = (energy_scale**4_dp) - V_h(Y)
 
 		if (rho_kinetic<0) cycle
 
@@ -466,6 +471,7 @@ end subroutine ic_metr
 
 !Subroutine that initializes the IC_METR routine.  This loads the sample_table from a file and does a burn in period.  Eps is the size of the coarse-graining for the interpolant.
 subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
+  use features, only : newunit
 	implicit none
 
 	real(dp), dimension(:), intent(out) :: y
@@ -483,7 +489,7 @@ subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 	call D_IC_EQEN(Y,iccounter)
 
 	!Get info on sample table from namelist.
-	open(newunit=u, file="parameters_hybrid.txt", status="old",&
+	open(unit=newunit(u), file="parameters_hybrid.txt", status="old",&
 	& delim = "apostrophe")
 	read(unit=u, nml=sample)
 	close(unit=u)
@@ -493,7 +499,7 @@ subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 	allocate(sample_table(samp_len,samp_wid))
 	sample_table=0_dp
 	!Data *must* be in form Y(2),...,Y(5), where Y(1)=0_dp assumed.
-	open(newunit=u, file=datafile, status="old", form="unformatted")
+	open(unit=newunit(u), file=datafile, status="old", form="unformatted")
 	do i=1,size(sample_table,1)		
 		read(unit=u,iostat=ierr) (sample_table(i,j),j=2,5)
 		if (is_iostat_end(ierr)) exit
@@ -612,6 +618,7 @@ end subroutine IC_TEST
 
 !Subroutine to open a file to read ICs from.  File has "length" x "dimn"-dimensional points, which are both passed as arguments to this routine.  Reads into temporary array from rank=0 (master), then scatters pieces to other threads in variable ic_table.
 subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, dimn)
+	use features, only : newunit
 	use mpi
 	implicit none
 
@@ -635,7 +642,7 @@ subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, d
 	!will be in row-major order and scatter works in column-major order for Fortran.
 	if (rank==0) then
 		!Read.
-		open(newunit=u,file=fname,form=formt,status="old")
+		open(unit=newunit(u),file=fname,form=formt,status="old")
 		do i=1,length
 			read(u), (mastertable(i,j),j=1,dimn)
 		end do
@@ -681,7 +688,8 @@ end subroutine ic_fromarray
 
 !Subroutine that initializes the file to read from.
 subroutine ic_file_init(y0, rank,numtasks,ic_table)
-	implicit none
+	use features, only : newunit
+  implicit none
 
 	real(dp), dimension(:), intent(out) :: y0
 	integer, intent(in) :: rank, numtasks
@@ -693,7 +701,7 @@ subroutine ic_file_init(y0, rank,numtasks,ic_table)
 	namelist /filetoread/ fname, fleng, fwid, fform
 
 	!Open parameter file and read namelist.
-	open(newunit=u,file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+	open(unit=newunit(u),file="parameters_hybrid.txt", status="old", delim = "apostrophe")
 	read(unit=u, nml=filetoread)
 	close(unit=u)
 	fname=trim(fname)
