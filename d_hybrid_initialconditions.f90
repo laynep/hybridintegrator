@@ -190,8 +190,8 @@ subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 		y=4
 	end if
 
-do1:	do
-	do2:	do
+  do1:	do
+    do2:	do
 			!set phi from energy constraint.
 			call random_number(rand)
 			y1(2)= (rand*(maxim(2)-minim(2))) + minim(2)
@@ -204,13 +204,14 @@ do1:	do
 			!sets the psi_dot ic to the range psi_dot_max to psi_dot_min
 			call random_number(rand)
 			y1(y) = (rand*(maxim(y)-minim(y))) + minim(y)
-			if(2_dp*rho_kinetic - (y1(5)*y1(5)) > 0) exit do2
+			if(2_dp*rho_kinetic - (y1(y)*y1(y)) > 0) exit do2
 		end do do2
 		!Set the phi_dot IC by the total energy density constraint.
 		sgn=y0(x)/abs(y0(x))
 		Y1(x) = sgn*sqrt(2_dp*rho_kinetic - (Y1(y)*Y1(y)))
 		!Exit condition.
 		if (metric(y0(2:5),y1(2:5)) .le. tol ) exit do1
+    print*,"bad ic"
 	end do do1
 
 	!Set initial conditions.
@@ -382,10 +383,10 @@ subroutine ic_metr(y,sample_table,iccounter,eps,dup,test)
 	logical :: check
 
 	!Load eps if not provided.
-	if (PRESENT(eps) .EQV. .FALSE.) eps=1_dp
+	if (.not. present(eps)) eps=1_dp
 
 	!Load the density calculation if not already done.
-	if (allocated(numbpoints_sample) .eqv. .false.) then
+	if (.not. allocated(numbpoints_sample)) then
 		!box cover, of size eps.
 		allocate(boxcover(size(sample_table,1),size(sample_table,2)))
 		boxcover=ceiling(sample_table/eps)

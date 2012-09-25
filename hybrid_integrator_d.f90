@@ -7,7 +7,7 @@
 !then plotting the results.  The equations will be solved by calling a differential
 !equation solver called FCVODE.  FCVODE will solve the system from time t=T to t=TOUT
 !and spits out the values of Y, so it's necessary to loop this over all required values
-!of TOUT. 
+!of TOUT.
 
 !Y(1)=N, Y(2)=phi, Y(3)=psi, Y(4)=phi_dot, Y(5)=psi_dot.
 !*****************************************************************
@@ -89,7 +89,7 @@ program hybrid_integrator_d
 	if(printing) print*,'Number of tasks=',numtasks,' My rank=',rank
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
 
-	!Opens success and fail files. Optionally traj files.  Defaults to unform binary.
+	!Opens success and fail files. Optionally traj files.  Defaults to unformatted binary.
 	call open_hybridfiles(rank,numtasks,sucunit,failunit)
 	if (traj) call open_trajfiles(rank, trajnumb)
 
@@ -140,7 +140,7 @@ program hybrid_integrator_d
 
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.	!Exit condition.
-do1: 	do while (integr_ch)
+icloop: 	do while (integr_ch)
 
 		!Count numb of times each thread goes through loop.
 		localcount = localcount + 1
@@ -164,12 +164,10 @@ do1: 	do while (integr_ch)
 	
 		!Perform the integration.
 		iend=3000000
-	do3:	do i=1,iend
-
+intloop:	do i=1,iend
 
 			!Take field values if recording trajectory. Previously initialized
 			if (traj) call rec_traj(Y, ytraj)
-
 
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
@@ -181,7 +179,7 @@ do1: 	do while (integr_ch)
 			call succ_or_fail(Y, success, successlocal, faillocal,&
 				& sucunit, failunit, ic, leave, printing)
 			!If condition met, leave=.true.
-			if (leave) exit do3
+			if (leave) exit intloop
 			
 			!Tells if not enough time for fields to evolve.
 			if (i==iend) then
@@ -189,7 +187,7 @@ do1: 	do while (integr_ch)
 				if (printing) print*, "Error: field didn't reach minima."
 			end if
 			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
-		end do do3
+		end do intloop
 
 		!Print the traj & delete -- O(2n).
 		if (success==1 .and. traj) then
@@ -201,7 +199,7 @@ do1: 	do while (integr_ch)
 
 		!Check if the integrator isn't finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing, check)
-		if (allfailcheck) exit do1
+		if (allfailcheck) exit icloop
 		!Determine loop exit condition.
 		if (ic<5 .or. ic==6) then
 			integr_ch=(successlocal<points)
@@ -209,7 +207,7 @@ do1: 	do while (integr_ch)
 			integr_ch=(localcount<size(ic_table,1))
 		end if
 
-	end do do1
+	end do icloop
 
 	!Halts processors here.
 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)

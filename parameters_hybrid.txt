@@ -17,9 +17,9 @@
 	mu = 500D3,
 	nu = .015D3,
 	lambda = 6.8D-3,
-	energy_scale = 1D1/
+	energy_scale = 1D-1/
 &ics
-	points=100,
+	points=10,
 	IC=6,
 	dt=1D6,
 	printing=.true.,
@@ -36,8 +36,10 @@
 	fwid=4,
 	fform="unformatted"
 /
+
+!NOTE:   N,phi,psi,phi_dot,psi_dot
 &zoom
-	yref=0D0,62.549557D0, 196.466332D0, 93.7453D0, 105.88592D0, !NOTE:   N,phi,psi,phi_dot,psi_dot
-	toler=1D0
+	yinit=0D0, 4.7719688234190150, 168.42510851795384, 3.43932060249110307E-003, 1.37154090993970388E-002,
+  toler=1D-2
 /
 

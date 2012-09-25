@@ -82,7 +82,6 @@ subroutine hybrid_initstats(ic,printing,infounit)
 		u=200
 	end if
 
-
 	open(unit=u,status='new',file='info.200')
 	if(printing) print*, "Hybrid Inflation -- Homogeneous"
 	write(unit=u,fmt=*) "Hybrid Inflation -- Homogeneous"
@@ -280,11 +279,11 @@ subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 	NGLOBAL = NEQ*numtasks
 
 	!Set params for FCVODE.
-	CALL FNVINITS(1, NEQ, IER)
+	call FNVINITS(1, NEQ, IER)
 		if (IER .NE. 0) then
 			print*, ' SUNDIALS_ERROR: FNVINITS returned IER = ', IER
-			STOP
-		ENDIF
+			stop
+		endif
 	IATOL = 2
 	ATOL = 1e-10_dp
 	RTOL = 1e-10_dp
@@ -368,30 +367,40 @@ subroutine print_del_traj(list, numb)
 	end if
 	!Delete the list.
 	call ll_del_all(list)
-
-
 end subroutine print_del_traj
 
 !Subroutine which will initialize the zoom-in technique.  Finds a reference point from namelist and returns one point on the equal energy surface, a distance "tol" away from yref.  Uses the Euclidean metric on field space.
 subroutine ic_zoom_init(y0, yref, iccounter, toler)
+  use features, only : newunit
 	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y0, yref
+  real(dp), dimension(size(yref)) :: yinit
 	real(dp), intent(inout) :: toler
 	integer, intent(inout) :: iccounter
+  integer :: u
 
-	namelist / zoom / yref, toler
+	namelist / zoom / yinit, toler
 
-	!Read the reference point "yref" and tolerance "toler" from file.
-	open(unit=1002, file="parameters_hybrid.txt", status="old",&
+	!Read the reference point "yinit" and tolerance "toler" from file.
+	open(unit=newunit(u), file="parameters_hybrid.txt", status="old",&
 	& delim = "apostrophe")
-	read(unit=1002, nml=zoom)
-	close(unit=1002)
+	read(unit=u, nml=zoom)
+	close(unit=u)
+
+  !Change yinit to proper form (phi,psi,...)
+  yref(2)=yinit(3)
+  yref(3)=yinit(2)
+  yref(4)=yinit(5)
+  yref(5)=yinit(4)
 
 	!Get a new point on eq en slice a dist "toler" away from yref.
 	call ic_eqen_pert(yref,y0,iccounter,euclidean,toler)
 
 end subroutine ic_zoom_init
+
+
+
 
 !Euclidean metric.
 pure real(dp) function euclidean(pt1,pt2)
@@ -404,9 +413,4 @@ pure real(dp) function euclidean(pt1,pt2)
 end function euclidean
 
 
-
-
-
-
 end module hybrid_subroutines
-
