@@ -211,7 +211,6 @@ subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 		Y1(x) = sgn*sqrt(2_dp*rho_kinetic - (Y1(y)*Y1(y)))
 		!Exit condition.
 		if (metric(y0(2:5),y1(2:5)) .le. tol ) exit do1
-    print*,"bad ic"
 	end do do1
 
 	!Set initial conditions.

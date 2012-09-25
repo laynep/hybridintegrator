@@ -375,7 +375,7 @@ subroutine ic_zoom_init(y0, yref, iccounter, toler)
 	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y0, yref
-  real(dp), dimension(size(yref)) :: yinit
+  real(dp), dimension(5) :: yinit
 	real(dp), intent(inout) :: toler
 	integer, intent(inout) :: iccounter
   integer :: u
