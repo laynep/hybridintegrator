@@ -14,14 +14,15 @@
 
 
 program hybrid_integrator_d
-use d_hybrid_initialconditions
-use hybrid_subroutines
-use rng
-use mpi
-use linked_list
-use lyapunov_subroutines
-use types, only : dp
-implicit none
+  use d_hybrid_initialconditions
+  use hybrid_subroutines
+  use rng
+  use mpi
+  use linked_list
+  use lyapunov_subroutines
+  use types, only : dp
+  use features, only : newunit
+  implicit none
 
 	!Main variables.
 	real(dp), dimension(5) :: y, y0		!The fields.
@@ -34,7 +35,7 @@ implicit none
 	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
 		& errorlocal, ierr, rc
 	!Program variables.
-	integer :: ic, trajnumb, points
+	integer :: ic, trajnumb, points, u
 	real(dp) :: check, v, ratio, toler
 	logical :: leave, allfailcheck, printing, traj
 	logical :: integr_ch
@@ -73,9 +74,9 @@ implicit none
 	!Read numb of (data points per numb of processes) & IC type from file.
 	!Do we want to print to stdout?  Do we want to record the trajectory?
 	!Do we want to calc lyapunov exps?
-	open(unit=10000, file="parameters_hybrid.txt", status="old", delim = "apostrophe")
-	read(unit=10000, nml=ics)
-	close(unit=10000)
+	open(unit=newunit(u), file="parameters_hybrid.txt", status="old", delim = "apostrophe")
+	read(unit=u, nml=ics)
+	close(unit=u)
 
 	!Global counters.
 	counter = 0
@@ -164,8 +165,6 @@ implicit none
 		stop
 	end if 
 
-
-
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.	!Exit condition.
 do1: 	do while (integr_ch)
@@ -196,7 +195,9 @@ do1: 	do while (integr_ch)
 	
 		!Perform the integration.
 		iend=3000000
-	do3:	do i=1,iend
+do3:	do i=1,iend
+!Reinit LESLIS variables.
+			call reinit_leslis(le_t0,le_te,le_ipar,dt)
 
 
 			!Take field values if recording trajectory. Previously initialized
@@ -212,15 +213,24 @@ do1: 	do while (integr_ch)
 
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
-
 			call FCVODE(TOUT,T,Y,ITASK,IER)
-
+        if (ier .ne. 0) then
+          print*,"Error at FCVODE"
+          stop
+        end if
 			TOUT = TOUT + dt
 			!*********************************
-
+print*,"========="
+print*,le_t0
+print*,le_te
+print*,"........."
 			!Get derivs for Lyapunov calc.
 			call fcvdky(t, 1, le_dky, ier)
-			if (i>1) then
+			  if (ier .ne. 0) then
+          print*,"Error at FCVDKY"
+          stop
+        end if
+      if (i>1) then
 				!Upper bounds on Hermite interp.
 				le_y_2 = y
 				le_x_2 = tout
@@ -231,9 +241,13 @@ do1: 	do while (integr_ch)
 				&le_y02,le_tolq,le_toll,le_ipar,le_fwork,&
 				&le_iflag,le_inarr,le_rearr)
 			end if
-			!Update times with times for FCVODE.
+print*,le_t0
+print*,le_te
+print*,"========="
+      !Update times with times for FCVODE.
 			le_te = tout			
 			le_t0 = t
+print*,"lyapunov exps", le_exps
 
 			!Check succ or fail condition: N>65 success=1, and N<65 failure=0.
 			call succ_or_fail(Y, success, successlocal, faillocal,&
@@ -246,7 +260,7 @@ do1: 	do while (integr_ch)
 				errorlocal = errorlocal + 1
 				if (printing) print*, "Error: field didn't reach minima."
 			end if
-			if(printing .and. MOD(i,iend/10)==0) print*,"i is getting big...",i
+			if(printing .and. mod(i,iend/10)==0) print*,"i is getting big...",i
 		end do do3
 
 

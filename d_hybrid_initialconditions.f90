@@ -638,7 +638,7 @@ subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, d
 	allocate(mastertable(length,dimn),masttransp(dimn,length))
 
 	!Read ICs into mastertable by master thread.
-	!NOTE: we have to do the kludgy transpose mess, because the file we read from
+	!NOTE: we have to do the kludgy transpose mess because the file we read from
 	!will be in row-major order and scatter works in column-major order for Fortran.
 	if (rank==0) then
 		!Read.
@@ -719,6 +719,8 @@ end subroutine ic_file_init
 
 
 
+
+end module d_hybrid_initialconditions
 !
 !
 !
@@ -900,15 +902,15 @@ end subroutine ic_file_init
 !**********************************************************************
 !Function that takes an m-D vector and gives the projection of that vector onto the (m-1)-D tangent space with normal, norm.  If the normal is a unit coordinate, then the normal direction will have a value of zero.  Euclidean.
 
-function projection(vect, norm)
-	implicit none
-
-	real(dp), dimension(:) :: vect, norm
-	real(dp), dimension(size(vect)) :: projection
-	
-	projection = vect - norm*dot_product(vect,norm)
-
-end function projection
+!function projection(vect, norm)
+!	implicit none
+!
+!	real(dp), dimension(:) :: vect, norm
+!	real(dp), dimension(size(vect)) :: projection
+!	
+!	projection = vect - norm*dot_product(vect,norm)
+!
+!end function projection
 
 
 
@@ -1002,31 +1004,31 @@ end function projection
 !******************************************************************************************
 !Subroutine which seeds the MCMC routine somewhere on the equal energy slice.
 
-subroutine SEED_IC_EQEN(Y)
-	implicit none
-
-	real(dp), dimension(:), intent(inout) :: Y
-	real(dp) ::  rand_1, rand_2, V, left
-
-	do
-	Y(1)=0_dp
-	Y(4)=0_dp
-	call random_number(rand_1)
-	call random_number(rand_2)
-	Y(2) = rand_2 *(phi_max-phi_min)+phi_min
-	Y(3) = rand_1 *(psi_max-psi_min)+psi_min
-	V = (lambda**4_dp)*((1_dp-((Y(3)*Y(3))/(m*m)))**2_dp +((Y(2)*Y(2))/(mu*mu)) + &
-		&((Y(2)*Y(2)*Y(3)*Y(3))/ (nu**4_dp)))
-	left = 2_dp*(energy_scale**4 - V)
-	if(left<0) then
-		cycle
-	else
-		Y(5)=SQRT(left)
-		exit
-	end if
-	end do
-
-end subroutine SEED_IC_EQEN
+!subroutine SEED_IC_EQEN(Y)
+!	implicit none
+!
+!	real(dp), dimension(:), intent(inout) :: Y
+!	real(dp) ::  rand_1, rand_2, V, left
+!
+!	do
+!	Y(1)=0_dp
+!	Y(4)=0_dp
+!	call random_number(rand_1)
+!	call random_number(rand_2)
+!	Y(2) = rand_2 *(phi_max-phi_min)+phi_min
+!	Y(3) = rand_1 *(psi_max-psi_min)+psi_min
+!	V = (lambda**4_dp)*((1_dp-((Y(3)*Y(3))/(m*m)))**2_dp +((Y(2)*Y(2))/(mu*mu)) + &
+!		&((Y(2)*Y(2)*Y(3)*Y(3))/ (nu**4_dp)))
+!	left = 2_dp*(energy_scale**4 - V)
+!	if(left<0) then
+!		cycle
+!	else
+!		Y(5)=SQRT(left)
+!		exit
+!	end if
+!	end do
+!
+!end subroutine SEED_IC_EQEN
 
 
 !*****************************************************************************************
@@ -1074,4 +1076,3 @@ end subroutine SEED_IC_EQEN
 
 
 
-end module d_hybrid_initialconditions
