@@ -20,9 +20,9 @@
 	energy_scale=1E3
 /
 &ics
-	points=10,
+	points=1,
 	IC=2,
-	dt=1D6,
+	dt=5D5,
 	printing=.true.,
 	traj=.false.
 /

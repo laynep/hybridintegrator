@@ -35,7 +35,7 @@ program hybrid_integrator_d
 		& errorlocal, ierr, rc
 	!Program variables.
 	integer :: ic, trajnumb, points, u
-	real(dp) :: check, v, ratio, toler
+	real(dp) :: check, v, ratio, toler, dt_traj
 	logical :: leave, allfailcheck, printing, traj
 	logical :: integr_ch
 	!Variables to load IC from file for direct read or interpolation (ic=4,5)
@@ -76,6 +76,9 @@ program hybrid_integrator_d
 	faillocal = 0
 	localcount = 0
 
+  !Time step when recording trajs.
+  dt_traj=1e-7_dp
+
 	!Parallelizes.
 	call MPI_INIT(ierr)
 		if(ierr .ne. MPI_SUCCESS) then
@@ -105,6 +108,10 @@ program hybrid_integrator_d
 	!Set some params for FCVODE integrator.
 	call set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout, dt)
+
+  if (traj) then
+    tout = t0+dt_traj
+  end if
 
 	!Set first IC.
 	if (IC == 1) then
@@ -152,7 +159,11 @@ icloop: 	do while (integr_ch)
 			!Reinit time and Y
 			Y=Y0
 			T0=0_dp
-			TOUT = dt
+      if (.not. traj) then
+        tout =t0+ dt
+      else
+        tout = t0+dt_traj
+      end if
 			T=T0
 			!Reinitialize integrator.
 			ITASK = 1
@@ -161,21 +172,36 @@ icloop: 	do while (integr_ch)
 		!Counters
 		success = 0
 		iccounter = iccounter + 1
-	
+
 		!Perform the integration.
 		iend=3000000
 intloop:	do i=1,iend
 
 			!Take field values if recording trajectory. Previously initialized
-			if (traj) call rec_traj(Y, ytraj)
+			if (traj) then
+        call rec_traj(Y, ytraj)
+      end if
 
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
 			call FCVODE(TOUT,T,Y,ITASK,IER)
-			TOUT = TOUT + dt
+      if (.not. traj) then
+        TOUT = TOUT + dt
+      !If recording trajs then make start of integration have much shorter time
+      !steps.
+      else if (abs(Y(4)/phi_dot_0) < 1e-3_dp .and. abs(Y(5)/psi_dot_0) < 1e-3_dp) then
+        !small velocity
+        TOUT = TOUT + dt
+      else if (abs(Y(4)/phi_dot_0) < 1e-1_dp .and. abs(Y(5)/psi_dot_0) < 1e-1_dp) then
+        !medium velocity
+        tout = tout + dt_traj*1000_dp
+      else
+        !big velocity
+        TOUT = TOUT + dt_traj
+      end if
 			!*********************************
-
-			!Check succ or fail condition: N>65 success=1, and N<65 failure=0.
+			
+      !Check succ or fail condition: N>65 success=1, and N<65 failure=0.
 			call succ_or_fail(Y, success, successlocal, faillocal,&
 				& sucunit, failunit, ic, leave, printing)
 			!If condition met, leave=.true.

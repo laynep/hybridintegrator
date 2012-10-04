@@ -13,7 +13,7 @@
 !*****************************************************************
 
 
-program hybrid_integrator_d
+program lyapunov_integrator_d
   use d_hybrid_initialconditions
   use hybrid_subroutines
   use rng
@@ -54,7 +54,7 @@ program hybrid_integrator_d
 	real(dp) :: rtol, atol(5)
 	!LESLIS params
 	integer, parameter :: le_d=5	!dimn of problem
-	integer, parameter :: le_n=3	!numb lyap exp to calc
+	integer, parameter :: le_n=1	!numb lyap exp to calc
 	integer, parameter :: le_work=le_d*le_d+11*le_d*le_n+13*le_d+8*le_n+63
 	integer :: le_ipar(13), le_iflag
 	real(dp) :: le_te, le_t0, le_tolt, le_tolq, le_toll(le_n)
@@ -196,8 +196,9 @@ do1: 	do while (integr_ch)
 		!Perform the integration.
 		iend=3000000
 do3:	do i=1,iend
+print*, i
 !Reinit LESLIS variables.
-			call reinit_leslis(le_t0,le_te,le_ipar,dt)
+			!call reinit_leslis(le_t0,le_te,le_ipar,dt)
 
 
 			!Take field values if recording trajectory. Previously initialized
@@ -220,9 +221,12 @@ do3:	do i=1,iend
         end if
 			TOUT = TOUT + dt
 			!*********************************
+      le_te=t
 print*,"========="
-print*,le_t0
-print*,le_te
+print*,"le_t0 #1",le_t0
+print*,"le_te #1",le_te
+print*,"t #1",t
+print*,"tout #1",tout
 print*,"........."
 			!Get derivs for Lyapunov calc.
 			call fcvdky(t, 1, le_dky, ier)
@@ -241,8 +245,10 @@ print*,"........."
 				&le_y02,le_tolq,le_toll,le_ipar,le_fwork,&
 				&le_iflag,le_inarr,le_rearr)
 			end if
-print*,le_t0
-print*,le_te
+print*,"le_t0 #2",le_t0
+print*,"le_te #2",le_te
+print*,"t #2",t
+print*,"tout #2",tout
 print*,"========="
       !Update times with times for FCVODE.
 			le_te = tout			
@@ -264,7 +270,6 @@ print*,"lyapunov exps", le_exps
 		end do do3
 
 
-print*,"lyapunov exps", le_exps
 		!Print the traj & delete -- O(2n).
 		if (traj) call print_del_traj(ytraj, trajnumb)
 
@@ -309,7 +314,7 @@ print*,"lyapunov exps", le_exps
 	!Why this is necessary I have no idea.  It works fine without it on my computer, but MPI gives an error if this isn't here on the cluster.
 	stop
 
-end program hybrid_integrator_d
+end program lyapunov_integrator_d
 
 
 
