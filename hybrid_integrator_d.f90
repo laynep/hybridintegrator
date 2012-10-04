@@ -189,7 +189,7 @@ intloop:	do i=1,iend
         TOUT = TOUT + dt
       !If recording trajs then make start of integration have much shorter time
       !steps.
-      else if (abs(Y(4)/phi_dot_0) < 1e-3_dp .and. abs(Y(5)/psi_dot_0) < 1e-3_dp) then
+      else if (abs(Y(4)/phi_dot_0) < 1e-5_dp .and. abs(Y(5)/psi_dot_0) < 1e-5_dp) then
         !small velocity
         TOUT = TOUT + dt
       else if (abs(Y(4)/phi_dot_0) < 1e-1_dp .and. abs(Y(5)/psi_dot_0) < 1e-1_dp) then
