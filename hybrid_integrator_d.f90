@@ -174,7 +174,7 @@ icloop: 	do while (integr_ch)
 		iccounter = iccounter + 1
 
 		!Perform the integration.
-		iend=3000000
+		iend=10000000
 intloop:	do i=1,iend
 
 			!Take field values if recording trajectory. Previously initialized
