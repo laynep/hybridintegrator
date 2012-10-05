@@ -1,16 +1,55 @@
-!*****************************************************************
+!*******************************************************************************
 !Layne Price, University of Auckland, May 15, 2012.
+!*******************************************************************************
 
-!This is a program that will probe the space of initial conditions for 2 field hybrid inflation in order to
-!determine which initial conditions will yield more than 60 e-folds of inflation.  This
-!will be done by solving the dynamical equations for a number of initial conditions and
-!then plotting the results.  The equations will be solved by calling a differential
-!equation solver called FCVODE.  FCVODE will solve the system from time t=T to t=TOUT
-!and spits out the values of Y, so it's necessary to loop this over all required values
-!of TOUT.
+!SUMMARY:
+!A program that does integration for two field hybrid inflation.  Uses the
+!integrator FCVODE from the LLNL SUNDIALS package, which requires the RHS of the
+!ODE to be expressed in the external subroutine FCVFUN and the Jacobian in the
+!external subroutine FCVDJAC.  These are included below the main program.
+!FCVODE functions are stored in a library.
 
+!OUTLINE:
+!The program architecture is as follows: We parallelize using OpenMPI; load ICs
+!according to the method specified in the namelist; integrate the initial
+!condition; sort the initial condition into a "success" array if it reaches N>65
+!and into a "fail" array if it reaches the minimum of the potential without
+!inflating.  A new IC is chosen and the integration is repeated until we get
+!enough points.  Counters on the number of points found is collected on the
+!master thread and stats are printed.
+
+!OPTIONS:
+!Options for the program are contained in the namelists in the parameter file,
+!parameters_hybrid.txt.  Program options are contained in the namelist &ics: how
+!many successful initial conditions do we
+!want to find (points); what method should we use to sample the IC space (IC);
+!what should the time-step be (dt); do we want to print to stdout (printing); do we
+!want to record the trajectories (traj).  If we are getting ICs via Metropolis
+!sampling of the IC space, the namelist &sample can be used to specify the
+!dimensions of the array we should be sampling and the name of the file it is
+!stored in.  Similarly, the namelist &filetoread provides similar information if
+!we are reading ICs explicitly from a given file, without sampling.  The &zoom
+!namelist gives one point which we are to zoom in on, providing a high
+!resolution sample near the given point with tolerance specified.  Note that
+!this point should be put in the namelist as (e-fold,psi,phi,psi_dot,phi_dot).
+!The namelist &parameters specify the particle physics parameters for hybrid
+!inflation.
+
+!DEPENDENCIES:
+!The program subroutines are contained in the module hybrid_subroutines and the
+!routines that calculate the initial conditions are contained in the
+!d_hybrid_initialconditions module.  Random number generation is done with the
+!module rng.  MPI functions are called with the module mpi.  When storing
+!trajectories we don't a priori know how many steps it will take to reach an end
+!state, so we store these as a linked list, with type and methods defined in the
+!module linked_list.  The types module defines the amount of working precision;
+!and the newunit function from the features module gives us the ability to open
+!a new file without worrying about whether the unit has already been used.  The
+!libraries from the SUNDIALS package are necessary to do the integration.
+
+!NOTE:  The Y vector corresponds to:
 !Y(1)=N, Y(2)=phi, Y(3)=psi, Y(4)=phi_dot, Y(5)=psi_dot.
-!*****************************************************************
+!*******************************************************************************
 
 
 program hybrid_integrator_d
