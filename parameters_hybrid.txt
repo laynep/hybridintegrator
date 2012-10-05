@@ -24,7 +24,7 @@
 	IC=2,
 	dt=5D5,
 	printing=.true.,
-	traj=.false.
+	traj=.true.
 /
 &sample
 	samp_len=2500000,
