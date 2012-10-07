@@ -17,7 +17,7 @@
 	mu = 500D3,
 	nu = .015D3,
 	lambda = 6.8D-3,
-	energy_scale=1E3
+	energy_scale=1E0
 /
 &ics
 	points=1,

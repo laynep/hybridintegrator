@@ -45,7 +45,9 @@
 !module linked_list.  The types module defines the amount of working precision;
 !and the newunit function from the features module gives us the ability to open
 !a new file without worrying about whether the unit has already been used.  The
-!libraries from the SUNDIALS package are necessary to do the integration.
+!libraries from the SUNDIALS package are necessary to do the integration.  The
+!modules use sorting and location routines that are collected in the sorters
+!module.
 
 !NOTE:  The Y vector corresponds to:
 !Y(1)=N, Y(2)=phi, Y(3)=psi, Y(4)=phi_dot, Y(5)=psi_dot.
@@ -55,7 +57,7 @@
 program hybrid_integrator_d
   use d_hybrid_initialconditions
   use hybrid_subroutines
-  use rng
+  use rng, only : init_random_seed
   use mpi
   use linked_list
   use types, only : dp
@@ -290,7 +292,8 @@ intloop:	do i=1,iend
 	!End parallel.
 	call MPI_FINALIZE(ierr)
 
-	!Why this is necessary I have no idea.  It works fine without it on my computer, but MPI gives an error if this isn't here on the cluster.
+	!Why this is necessary I have no idea.  It works fine without it on my computer,
+  !but MPI gives an error if this isn't here on the cluster.
 	stop
 
 end program hybrid_integrator_d

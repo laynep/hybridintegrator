@@ -1,3 +1,12 @@
+!*******************************************************************************
+!Layne Price, University of Auckland, May 15, 2012.
+!*******************************************************************************
+
+!Module that contains the subroutines necessary to run the main program
+!hybrid_integrator_d.  However, this module does not contain the procedures
+!necessary to obtain the ICs.  These are further specified in
+!d_hybrid_initialconditions.f90.
+
 module hybrid_subroutines
   use types, only : dp
   use d_hybrid_initialconditions

@@ -1,9 +1,11 @@
 !**************************************************************************************
 !Layne Price, University of Auckland, May 5, 2012
 
-!A series of subroutines which set the initial conditions for hybrid inflation subject to a set of constraints, dependent on each subroutine.
+!A series of subroutines which set the initial conditions for hybrid inflation subject 
+!to a set of constraints, dependent on each subroutine.
 
-!Note that the parameters_hybrid() subroutine must be declared first, before the other routines can be used.
+!Note that the parameters_hybrid() subroutine must be declared first, before the other 
+!routines can be used.
 
 !subroutine parameters_hybrid() ................... Sets the particle physics 
 !						parameters for hybrid inflation.
