@@ -506,6 +506,8 @@ subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 	open(unit=newunit(u), file=datafile, status="old", form="unformatted")
 	do i=1,size(sample_table,1)		
 		read(unit=u,iostat=ierr) (sample_table(i,j),j=2,5)
+    print*,"TEST",(sample_table(i,j),j=2,5)
+
 		if (is_iostat_end(ierr)) exit
 	end do
 	close(unit=u)
