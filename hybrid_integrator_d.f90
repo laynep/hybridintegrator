@@ -120,7 +120,7 @@ program hybrid_integrator_d
 	!Parallelizes.
 	call mpi_init(ierr)
 		if(ierr .ne. mpi_success) then
-			if(printing) print*,"Error parallelizing."
+			print*,"Error parallelizing."
 			call mpi_abort(mpi_comm_world, rc, ierr)
 			stop
 		end if
@@ -134,13 +134,13 @@ program hybrid_integrator_d
 	call open_hybridfiles(rank,numtasks,sucunit,failunit)
 	if (traj) call open_trajfiles(rank, trajnumb)
 
-	!Set potential parameters.
+	!Set potential's parameters.
 	call parameters_hybrid()
 
 	!Print stats.
 	if(rank==0) call hybrid_initstats(ic, printing)
 
-	!Set seed for each thread from module rng.
+	!Set seed for each thread.
 	call init_random_seed(rank)
 
 	!Set some params for FCVODE integrator.
@@ -161,7 +161,7 @@ program hybrid_integrator_d
   else
     !If recording trajectories, we want the integrator to return at every step
     !taken so that we can use the adaptive step size control in FCVODE to get
-    !all important data. Set with itask=2.
+    !important data. Set with itask=2.
     itask=2
   end if
 	call fcvdense(neq, ier)
@@ -171,7 +171,7 @@ program hybrid_integrator_d
 	integr_ch=.true.	!Exit condition.
 icloop: 	do while (integr_ch)
 
-		!Count numb of times each thread goes through loop.
+		!Count numb of times each thread gets a new IC.
 		localcount = localcount + 1
 		!Get new point if on second or greater run.
 		if (localcount>1) then
@@ -201,9 +201,7 @@ icloop: 	do while (integr_ch)
 intloop:	do i=1,iend
 
 			!Take field values if recording trajectory.
-			if (traj .and. mod(i,10)==0) then
-        call rec_traj(Y, ytraj)
-      end if
+			if (traj .and. mod(i,10)==0) call rec_traj(Y, ytraj)
 
 			!*********************************
 			!Perform the integration. dt set in namelist ics.

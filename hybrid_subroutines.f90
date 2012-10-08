@@ -94,16 +94,16 @@ subroutine hybrid_initstats(ic,printing,infounit)
 	open(unit=u,status='new',file='info.200')
 	if(printing) print*, "Hybrid Inflation -- Homogeneous"
 	write(unit=u,fmt=*) "Hybrid Inflation -- Homogeneous"
-	if (IC == 1) then
+	if (ic == 1) then
 		if(printing) print*,"ZERO VELOCITY SLICE"
 		write(unit=u,fmt=*) "ZERO VELOCITY SLICE"
-	else if (IC == 2) then
+	else if (ic == 2) then
 		if(printing) print*,"EQUAL ENERGY SLICE"
 		write(unit=u,fmt=*) "EQUAL ENERGY SLICE"
-	else if (IC == 3) then
+	else if (ic == 3) then
 		if(printing) print*,"2D SLICING OF EQEN SLICE"
         write(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
-	else if (IC == 4) then
+	else if (ic == 4) then
 		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
         write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
 	else if (ic==5) then
@@ -147,24 +147,24 @@ subroutine hybrid_finalstats(ic, counter, failcount, badfieldcounter, &
 	end if
 
 	ratio=DBLE(counter)/DBLE(counter+failcount)
-	if (IC == 1) then
+	if (ic == 1) then
 		if(printing) print*,"ZERO VELOCITY SLICE"
 		write(unit=u,fmt=*) "ZERO VELOCITY SLICE"
-	else if (IC == 2) then
+	else if (ic == 2) then
 		if(printing) print*,"EQUAL ENERGY SLICE"
 		write(unit=u,fmt=*) "EQUAL ENERGY SLICE"
-	else if (IC==3) then
+	else if (ic==3) then
 		if(printing) print*, "2D SLICING OF EQEN SLICE."
 		write(unit=u,fmt=*) "2D SLICING OF EQEN SLICE"
-	else if (IC == 4) then
+	else if (ic == 4) then
 		if(printing) print*,"IC FROM METROPOLIS SAMPLING"
-        write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
+    write(unit=u,fmt=*) "IC FROM METROPOLIS SAMPLING"
 	else if (ic==5) then
 		if(printing) print*,"IC FROM FILE"
-        write(unit=u,fmt=*) "IC FROM FILE"
+    write(unit=u,fmt=*) "IC FROM FILE"
 	else if (ic==6) then
-        if (printing) print*, "IC FROM ZOOMING IN ON POINT"
-        write(unit=u,fmt=*) "IC FROM ZOOMING IN ON POINT"
+    if (printing) print*, "IC FROM ZOOMING IN ON POINT"
+    write(unit=u,fmt=*) "IC FROM ZOOMING IN ON POINT"
 	end if
 
 	if(printing) print*,"Number of succ points ",counter,&
@@ -232,7 +232,7 @@ subroutine succ_or_fail(Y, success, successlocal, faillocal, &
 	if (Y(1)>65_dp) then
 		success = 1
 		successlocal = successlocal + 1
-		if (IC==1) then
+		if (ic==1) then
 			write(unit=sucunit),psi_0,phi_0
 		else
 			write(unit=sucunit), psi_0, phi_0,&
@@ -245,7 +245,7 @@ subroutine succ_or_fail(Y, success, successlocal, faillocal, &
 	elseif (check<0_dp) then
 		success = 0
 		faillocal = faillocal + 1
-		if (IC==1) then
+		if (ic==1) then
 			write(unit=failunit),psi_0,phi_0
 		else
 			write(unit=failunit), psi_0, phi_0,&
@@ -265,11 +265,11 @@ subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 	implicit none
 
 	!FCVODE PARAMS
-	real(dp), intent(out) :: RPAR(5)
-	integer, intent(out) :: METH, ITMETH
-	integer(kind=8), intent(out) :: NEQ, NGLOBAL
-	integer, intent(out) :: IATOL, ITASK
-	real(dp), intent(out) :: T0, T, TOUT, RTOL, ATOL(5)
+	real(dp), intent(out) :: rpar(5)
+	integer, intent(out) :: meth, itmeth
+	integer(kind=8), intent(out) :: neq, nglobal
+	integer, intent(out) :: iatol, itask
+	real(dp), intent(out) :: t0, t, tout, rtol, atol(5)
 	real(dp), intent(in) :: dt
 
 	!Other params
@@ -277,31 +277,31 @@ subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 	integer :: ier
 
 	!Pass params to FCVODE subroutines.  Errors if don't do this...?
-	RPAR(1) = lambda
-	RPAR(2) = m
-	RPAR(3) = mu
-	RPAR(4) = nu
-	RPAR(5) = beta
+	rpar(1) = lambda
+	rpar(2) = m
+	rpar(3) = mu
+	rpar(4) = nu
+	rpar(5) = beta
 
 	!DOF global and local.
-	NEQ = 5
-	NGLOBAL = NEQ*numtasks
+	neq = 5
+	nglobal = neq*numtasks
 
 	!Set params for FCVODE.
-	call FNVINITS(1, NEQ, IER)
-		if (IER .NE. 0) then
-			print*, ' SUNDIALS_ERROR: FNVINITS returned IER = ', IER
+	call fnvinits(1, neq, ier)
+		if (ier .ne. 0) then
+			print*, ' SUNDIALS_ERROR: FNVINITS returned IER = ', ier
 			stop
 		endif
-	IATOL = 2
-	ATOL = 1e-10_dp
-	RTOL = 1e-10_dp
-	METH = 2
-	ITMETH = 2
-	T0=0_dp
-	T=T0
-	ITASK = 1
-	TOUT = dt
+	iatol = 2
+	atol = 1e-10_dp
+	rtol = 1e-10_dp
+	meth = 2
+	itmetH = 2
+	t0=0_dp
+	t=t0
+	itask = 1
+	tout = dt
 
 end subroutine set_paramsFCVODE
 
@@ -427,22 +427,22 @@ subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
   real(dp), dimension(:,:), allocatable, intent(out) :: sample_table, ic_table
   real(dp), intent(inout) :: toler
 
-	if (IC == 1) then
+	if (ic == 1) then
 		!Zero vel slice.
-		call D_IC_ZEROV(Y0)
-	else if (IC == 2) then
+		call d_ic_zerov(y0)
+	else if (ic == 2) then
 		!Eq energy slice.
-		call D_IC_EQEN(Y0,iccounter)
-	else if (IC==3) then
+		call d_ic_eqen(y0,iccounter)
+	else if (ic==3) then
 		!Subslice of eq en slice.
-		call EQEN_SLICING(Y0)
-	else if (IC==4) then
+		call eqen_slicing(y0)
+	else if (ic==4) then
 		!Metropolis sample a dataset.
-		call IC_METR_INIT(Y0, iccounter, sample_table, burnin)
-	else if (IC==5) then
+		call ic_metr_init(y0, iccounter, sample_table, burnin)
+	else if (ic==5) then
 		!Read IC from a file.
 		call ic_file_init(y0, rank,numtasks,ic_table)
-	else if (IC==6) then
+	else if (ic==6) then
 		!Zoom in on one point on eq en surface.
 		call ic_zoom_init(y0, yref, iccounter, toler)
   else if (ic==7) then

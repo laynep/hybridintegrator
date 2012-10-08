@@ -82,10 +82,10 @@ end function V_h
 
 !This subroutine will set the initial conditions on an equal energy slice at the start of inflation that corresponds to the value energy_scale which is specified in the parameter declaration in the main program.
 
-subroutine D_IC_EQEN(Y,iccounter)
+subroutine d_ic_eqen(y,iccounter)
 	implicit none
 
-  real(dp), intent(out) :: Y(5)
+  real(dp), intent(out) :: y(5)
 	integer, intent(in) :: iccounter
 	real(dp) :: rand, rho_kinetic, dot_min, dot_max
 	integer :: param_constr, a, b
@@ -139,7 +139,7 @@ subroutine D_IC_EQEN(Y,iccounter)
 	!Reinitialize the e-fold value: Y(1)~N.
 	Y(1)=0_dp 		
 
-end subroutine D_IC_EQEN
+end subroutine d_ic_eqen
 
 !*********************************************************************************
 !Subroutine which will take one pt y0 and give another point y1 that is very close to it, but also on the equal energy slice.  
@@ -234,10 +234,10 @@ end subroutine ic_eqen_pert
 
 !Program subroutine: This subroutine will follow the results of Clesse and set the initial values of the velocity parameters to zero and choose the initial conditions of the fields at random.
 
-subroutine D_IC_ZEROV(Y)
+subroutine d_ic_zerov(y)
 	implicit none
 
-  real(dp), intent(out) :: Y(5)
+  real(dp), intent(out) :: y(5)
 	real(dp) :: rand_1, rand_2
 
 	!Set IC for Y(2)~phi randomly in range phi_min to phi_max.
@@ -260,12 +260,12 @@ subroutine D_IC_ZEROV(Y)
 	Y(1)=0_dp 
 		
 	
-end subroutine D_IC_ZEROV
+end subroutine d_ic_zerov
 
 !*******************************************************************************************
 !Fixed initial conditions set here.
 
-subroutine FIXED_IC(Y)
+subroutine fixed_ic(y)
   implicit none
 
 	real(dp), dimension(5), intent(out) :: Y
@@ -280,12 +280,12 @@ subroutine FIXED_IC(Y)
 	Y(4)=phi_dot_0
 	Y(5)=psi_dot_0
 
-end subroutine FIXED_IC
+end subroutine fixed_ic
 
 !****************************************************************************
 !Subroutine that slices the eqen surface.  This particular choice sets psi_0=0 so that all the initial conditions are set in (if the velocities were then zero) the inflationary valley.  psi_dot_0 is set by the energy constraint so that we can plot phi_0 vs phi_dot_0 as a two-dimensional representation of the three-dimensional slice.
 
-subroutine EQEN_SLICING(Y)
+subroutine eqen_slicing(y)
 	implicit none
 
 	real(dp), dimension(:), intent(out) :: Y
@@ -323,9 +323,9 @@ subroutine EQEN_SLICING(Y)
    end do
 
 
-end subroutine EQEN_SLICING
+end subroutine eqen_slicing
 
-subroutine EQEN_EQVEL(Y)
+subroutine eqen_eqvel(y)
 	implicit none
 
 	real(dp), dimension(:), intent(out) :: Y
@@ -350,7 +350,7 @@ subroutine EQEN_EQVEL(Y)
 
 		if (rho_kinetic<0) cycle
 
-		chi = SQRT(rho_kinetic)
+		chi = sqrt(rho_kinetic)
 		Y(4)=chi
 		phi_dot_0=chi
 		Y(5)=chi
@@ -361,7 +361,7 @@ subroutine EQEN_EQVEL(Y)
 	end do
 
 
-end subroutine EQEN_EQVEL
+end subroutine eqen_eqvel
 
 
 
@@ -442,7 +442,7 @@ doi:		do i=1,n
 		if (allocated(sample_table)) deallocate(sample_table)
 	end if
 	do
-		!GET A NEW POINT ON EQEN SLICE.
+		!Get a new point on eqen slice.
 		if (.not. present(test)) then 
 			call D_IC_EQEN(YPROP,iccounter)
 		else
@@ -450,16 +450,16 @@ doi:		do i=1,n
 			call EQEN_SLICING(YPROP)
 		end if
 
-		!CALC ACCEPT RATIO
+		!Calc accept ratio
 		accept=accept_ratio(Y,YPROP,eps)
 
-		!GEN RAND NUMB
+		!Gen rand numb
 		call random_number(rand)
 	
-		!MOVE TO NEW POINT if RAND<A
+		!Move to new point if rand<a
 		if (rand<accept) then
 			xxglobal_succ=xxglobal_succ+1
-			Y=YPROP
+			y=yprop
 			exit
 		end if
 		xxglobal_fail=xxglobal_fail+1
@@ -518,9 +518,9 @@ subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 		!Get new IC from sample_table.
 		iccounter=iccounter+1
 		if (present(eps)) then
-			call IC_METR(Y,sample_table,iccounter,eps)
+			call ic_metr(y,sample_table,iccounter,eps)
 		else
-			call IC_METR(Y,sample_table,iccounter)
+			call ic_metr(y,sample_table,iccounter)
 		end if
 	end do
 
@@ -552,9 +552,9 @@ real(dp) function accept_ratio(Y1,Y2,eps)
 			&numbpoints_sample(i,3),numbpoints_sample(i,4) /)
 
 	doj1:	do j=1,size(Y1)
-			check=.TRUE.
-			if (CEILING(Y1(j)/eps).ne.test(j)) then
-				check=.FALSE.
+			check=.true.
+			if (ceiling(y1(j)/eps).ne.test(j)) then
+				check=.false.
 				exit doj1
 			end if
 		end do doj1
@@ -570,9 +570,9 @@ real(dp) function accept_ratio(Y1,Y2,eps)
 		test=(/0, numbpoints_sample(i,1),numbpoints_sample(i,2),&
 			&numbpoints_sample(i,3),numbpoints_sample(i,4) /)
 	doj2:	do j=1,size(Y2)
-			check=.TRUE.
-			if (CEILING(Y2(j)/eps) .NE. test(j)) then
-				check=.FALSE.
+			check=.true.
+			if (ceiling(y2(j)/eps) .NE. test(j)) then
+				check=.false.
 				exit doj2
 			end if
 
@@ -604,7 +604,7 @@ end function accept_ratio
 
 
 !Gives uniform sample of IC from 0-1.  GOOD FOR TESTING.
-subroutine IC_TEST(Y)
+subroutine ic_test(y)
 	implicit none
 
 	real(dp), dimension(:), intent(out) :: Y
@@ -616,7 +616,7 @@ subroutine IC_TEST(Y)
 		Y(i)=rand_1
 	end do
 
-end subroutine IC_TEST
+end subroutine ic_test
 
 !Subroutine to open a file to read ICs from.  File has "length" x "dimn"-dimensional points, which are both passed as arguments to this routine.  Reads into temporary array from rank=0 (master), then scatters pieces to other threads in variable ic_table.
 subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, dimn)
@@ -654,10 +654,10 @@ subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, d
 	end if
 	!Scatter mastertransp to other threads.
 	call mpi_scatter(masttransp,n*dimn,mpi_double_precision,&
-	&ic_transp,n*dimn,mpi_double_precision,0, MPI_COMM_WORLD, ierr)
+	&ic_transp,n*dimn,mpi_double_precision,0, mpi_comm_world, ierr)
 
 	!Halt processors until master sends them ic_table.
- 	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+ 	call mpi_barrier(mpi_comm_world,ierr)
 	!Get transpose of ictable.
 	ic_table=transpose(ic_transp)
 
