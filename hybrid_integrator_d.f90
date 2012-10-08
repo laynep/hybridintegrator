@@ -118,17 +118,17 @@ program hybrid_integrator_d
 	localcount = 0
 
 	!Parallelizes.
-	call MPI_INIT(ierr)
-		if(ierr .ne. MPI_SUCCESS) then
+	call mpi_init(ierr)
+		if(ierr .ne. mpi_success) then
 			if(printing) print*,"Error parallelizing."
-			call MPI_ABORT(MPI_COMM_WORLD, rc, ierr)
+			call mpi_abort(mpi_comm_world, rc, ierr)
 			stop
 		end if
 	!Obtains info on processors.
-	call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
-	call MPI_COMM_SIZE(MPI_COMM_WORLD, numtasks, ierr)
+	call mpi_comm_rank(mpi_comm_world, rank, ierr)
+	call mpi_comm_size(mpi_comm_world, numtasks, ierr)
 	if(printing) print*,'Number of tasks=',numtasks,' My rank=',rank
-	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+	call mpi_barrier(mpi_comm_world,ierr)
 
 	!Opens success and fail files. Optionally traj files.  Defaults to unformatted binary.
 	call open_hybridfiles(rank,numtasks,sucunit,failunit)
@@ -154,18 +154,18 @@ program hybrid_integrator_d
 	Y=Y0
 
 	!Initialize FCVODE integrator.
-	call FCVMALLOC(T0, Y0, METH, ITMETH, IATOL, RTOL, ATOL,&
-		&IOUT, ROUT, IPAR, RPAR, IER)
+	call fcvmalloc(t0, y0, meth, itmeth, iatol, rtol, atol,&
+		&iout, rout, ipar, rpar, ier)
   if (.not. traj) then
-	  call FCVSETIIN("MAX_NSTEPS", 5000000, IER)
+	  call fcvsetiin("MAX_NSTEPS", 5000000, ier)
   else
     !If recording trajectories, we want the integrator to return at every step
     !taken so that we can use the adaptive step size control in FCVODE to get
     !all important data. Set with itask=2.
     itask=2
   end if
-	call FCVDENSE(NEQ, IER)
-	call FCVDENSESETJAC (1, IER)
+	call fcvdense(neq, ier)
+	call fcvdensesetjac (1, ier)
 
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.	!Exit condition.
@@ -179,17 +179,17 @@ icloop: 	do while (integr_ch)
 				&ic_table, yref, toler)
 
 			!Reinit time and Y
-			Y=Y0
-			T0=0e0_dp
+			y=y0
+			t0=0e0_dp
       tout =t0+ dt
-			T=T0
+			t=t0
 			!Reinitialize integrator.
       if (.not. traj) then
         itask = 1
       else
         itask=2
       end if
-			call FCVREINIT(T0, Y0, IATOL, RTOL, ATOL, IER)			
+			call fcvreinit(t0, y0, iatol, rtol, atol, ier)
 		end if
 		!Counters
 		success = 0
@@ -207,7 +207,7 @@ intloop:	do i=1,iend
 
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
-			call FCVODE(TOUT,T,Y,ITASK,IER)
+			call fcvode(tout,t,y,itask,ier)
       tout = tout + dt
       !*********************************
 			
@@ -222,7 +222,7 @@ intloop:	do i=1,iend
 				errorlocal = errorlocal + 1
 				if (printing) print*, "Error: field didn't reach minima."
 			end if
-			if(printing .and. MOD(i,iend/10)==0 .and. .not. traj) print*,"i is getting big...",i
+			if(printing .and. mod(i,iend/10)==0 .and. .not. traj) print*,"i is getting big...",i
 		end do intloop
     !###################################################################
 
@@ -248,17 +248,17 @@ intloop:	do i=1,iend
 	end do icloop
 
 	!Halts processors here.
-	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+	call mpi_barrier(mpi_comm_world,ierr)
 	!Gives child data to master.
-	call MPI_REDUCE(badfieldlocal,badfieldcounter,1,MPI_INTEGER,&
-		&MPI_SUM,0,MPI_COMM_WORLD,ierr)
-	call MPI_REDUCE(successlocal,counter,1,MPI_INTEGER,&
-		&MPI_SUM,0,MPI_COMM_WORLD,ierr)
-	call MPI_REDUCE(faillocal,failcount,1,MPI_INTEGER,&
-		&MPI_SUM,0,MPI_COMM_WORLD,ierr)
-	call MPI_REDUCE(errorlocal,errorcount,1,MPI_INTEGER,MPI_SUM,&
-		&0,MPI_COMM_WORLD,ierr)
-	call MPI_BARRIER(MPI_COMM_WORLD,ierr)
+	call mpi_reduce(badfieldlocal,badfieldcounter,1,mpi_integer,&
+		&mpi_sum,0,mpi_comm_world,ierr)
+	call mpi_reduce(successlocal,counter,1,mpi_integer,&
+		&mpi_sum,0,mpi_comm_world,ierr)
+	call mpi_reduce(faillocal,failcount,1,mpi_integer,&
+		&mpi_sum,0,mpi_comm_world,ierr)
+	call mpi_reduce(errorlocal,errorcount,1,mpi_integer,mpi_sum,&
+		&0,mpi_comm_world,ierr)
+	call mpi_barrier(mpi_comm_world,ierr)
 
 	!Print from master.
 	if(rank==0) then
@@ -267,10 +267,10 @@ intloop:	do i=1,iend
 	end if
 
 	!Clean up integrator.
-	call FCVFREE
+	call fcvfree
 
 	!End parallel.
-	call MPI_FINALIZE(ierr)
+	call mpi_finalize(ierr)
 
 	!Why this is necessary I have no idea.  It works fine without it on my computer,
   !but MPI gives an error if this isn't here on the cluster.
@@ -284,16 +284,16 @@ end program hybrid_integrator_d
 !***********************************************************************
 !RHS of equation to integrate.
 !***********************************************************************
-subroutine FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
+subroutine fcvfun(t, y, ydot, ipar, rpar, ier)
   use types, only : dp
   implicit none
 	
 	!******************
-	real(dp), intent(in) :: Y(*), t
+	real(dp), intent(in) :: y(*), t
 	real(dp), intent(out) :: ydot(*)
-	integer, intent(in) :: IPAR(*)
-	integer, intent(out) :: IER
-	real(dp), intent(in) :: RPAR(*)
+	integer, intent(in) :: ipar(*)
+	integer, intent(out) :: ier
+	real(dp), intent(in) :: rpar(*)
 	!******************
 
 	real(dp) :: v, d_phi, d_psi, hub
@@ -327,24 +327,24 @@ subroutine FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
 	ydot(5) = -3e0_dp*hub*y(5)-d_psi
 
 	!Success
-	IER = 0
+	ier = 0
 
-end subroutine FCVFUN
+end subroutine fcvfun
 
 !***************************************************************************
 !Jacobian of RHS of equation to integrate.
-subroutine FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
-			&WK1, WK2, WK3, IER)
+subroutine fcvdjac (neq, t, y, fy, djac, h, ipar, rpar,&
+			&wk1, wk2, wk3, ier)
   use types, only : dp
   implicit none
 
 	!**************************
-	real(dp), intent(in) :: Y(*), FY(*), T, H
-	integer, intent(in) :: IPAR(*), NEQ
-	integer, intent(out) :: IER
-	real(dp), intent(inout) :: DJAC(NEQ,*)
-	real(dp), intent(in) :: RPAR(*)
-	real(dp), intent(in) :: WK1(*), WK2(*), WK3(*)
+	real(dp), intent(in) :: y(*), fy(*), t, h
+	integer, intent(in) :: ipar(*), neq
+	integer, intent(out) :: ier
+	real(dp), intent(inout) :: djac(neq,*)
+	real(dp), intent(in) :: rpar(*)
+	real(dp), intent(in) :: wk1(*), wk2(*), wk3(*)
 	!**************************
 
 	real(dp) :: v, d_phi, d_psi, dd_phi, dd_psi, d_phi_d_psi, Hub
@@ -407,7 +407,7 @@ subroutine FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
 	!Success
 	IER = 0
 
-end subroutine FCVDJAC
+end subroutine fcvdjac
 
 
 
