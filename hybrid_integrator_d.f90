@@ -73,7 +73,7 @@ program hybrid_integrator_d
 		& failunit, failcount, localcount
 	integer :: errorcount, iend
 	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
-		& errorlocal, ierr, rc
+		& errorlocal, ierr, rc, burnin
 	!Program variables.
 	integer :: ic, trajnumb, points, u
 	real(dp) :: check, v, ratio, toler
@@ -148,28 +148,9 @@ program hybrid_integrator_d
 		& meth, itmeth, t0, t, itask, tout, dt)
 
 	!Set first IC.
-	if (IC == 1) then
-		!Zero vel slice.
-		call D_IC_ZEROV(Y0)
-	else if (IC == 2) then
-		!Eq energy slice.
-		call D_IC_EQEN(Y0,iccounter)
-	else if (IC==3) then
-		!Subslice of eq en slice.
-		call EQEN_SLICING(Y0)
-	else if (IC==4) then
-		!Metropolis sample a dataset.
-		call IC_METR_INIT(Y0, iccounter, sample_table, 10000)
-	else if (IC==5) then
-		!Read IC from a file.
-		call ic_file_init(y0, rank,numtasks,ic_table)
-	else if (IC==6) then
-		!Zoom in on one point on eq en surface.
-		call ic_zoom_init(y0, yref, iccounter, toler)
-  else if (ic==7) then
-    !Get a fixed initial condition.
-    call fixed_ic(y0)
-	end if
+  burnin=10000
+  call ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
+  &numtasks, ic_table, yref, toler)
 	Y=Y0
 
 	!Initialize FCVODE integrator.
@@ -181,7 +162,6 @@ program hybrid_integrator_d
     !If recording trajectories, we want the integrator to return at every step
     !taken so that we can use the adaptive step size control in FCVODE to get
     !all important data. Set with itask=2.
-    call FCVSETIIN("MAX_NSTEPS", 10, ier)
     itask=2
   end if
 	call FCVDENSE(NEQ, IER)
@@ -220,7 +200,7 @@ icloop: 	do while (integr_ch)
     iend=3000000
 intloop:	do i=1,iend
 
-			!Take field values if recording trajectory. Previously initialized
+			!Take field values if recording trajectory.
 			if (traj .and. mod(i,10)==0) then
         call rec_traj(Y, ytraj)
       end if
@@ -255,7 +235,7 @@ intloop:	do i=1,iend
       call ll_del_all(ytraj)
     end if
 
-		!Check if the integrator isn't finding any succ points.
+		!Check if not finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing, check)
 		if (allfailcheck) exit icloop
 		!Determine loop exit condition.
@@ -316,8 +296,7 @@ subroutine FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
 	real(dp), intent(in) :: RPAR(*)
 	!******************
 
-	real(dp) :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
-
+	real(dp) :: v, d_phi, d_psi, hub
 
 	!Potential and its derivatives.
 	v = (rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1e0_dp - &
@@ -325,24 +304,14 @@ subroutine FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
 		&+ ((y(2)*y(2))/(rpar(3)*rpar(3)))&
 		& + ((y(2)*y(2)*y(3)*y(3))/ (rpar(4)**4)))
 
-	d_phi_v = 2e0_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((y(2))/(rpar(3)*rpar(3)))+ &
+	d_phi = 2e0_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((y(2))/(rpar(3)*rpar(3)))+ &
 		&((y(2)*y(3)*y(3))/(rpar(4)**4)))
 
-	d_psi_v = 2e0_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2e0_dp*y(3))/&
+	d_psi = 2e0_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2e0_dp*y(3))/&
 		&(rpar(2)*rpar(2)))*(1e0_dp &
 		&-((y(3)*y(3))/(rpar(2)*rpar(2))))+&
 		& ((y(2)*y(2)*y(3))/(rpar(4)**4)))
-
-	dd_phi_v = 2e0_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*((1e0_dp/(rpar(3)*rpar(3)))+&
-		&((y(3)*y(3))/(rpar(4)**4)))
-
-	dd_psi_v = 2e0_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*(((-2e0_dp)/(rpar(2)*rpar(2)))+ &
-		&((4e0_dp*y(3)*y(3))/(rpar(2)**4))+&
-		& ((y(2)*y(2))/(rpar(4)**4)))
-
-	d_phi_d_psi_v = (4e0_dp*(rpar(1)*rpar(1)*rpar(1)*rpar(1))*y(2)*y(3))/&
-		&(rpar(4)*rpar(4)*rpar(4)*rpar(4))
-
+	
 	hub = sqrt(rpar(5)*(.5e0_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
 	if (hub<0) then
 		print*,"Hubble parameter < 0"
@@ -354,8 +323,8 @@ subroutine FCVFUN(T, Y, YDOT, IPAR, RPAR, IER)
 	ydot(1) = hub
 	ydot(2) = y(4)
 	ydot(3) = y(5)
-	ydot(4) = -3e0_dp*hub*y(4)-d_phi_v
-	ydot(5) = -3e0_dp*hub*y(5)-d_psi_v
+	ydot(4) = -3e0_dp*hub*y(4)-d_phi
+	ydot(5) = -3e0_dp*hub*y(5)-d_psi
 
 	!Success
 	IER = 0
@@ -378,35 +347,40 @@ subroutine FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
 	real(dp), intent(in) :: WK1(*), WK2(*), WK3(*)
 	!**************************
 
-	real(dp) :: V, D_phi_V, D_psi_V, DD_phi_V, DD_psi_V, D_phi_D_psi_V, Hub
+	real(dp) :: v, d_phi, d_psi, dd_phi, dd_psi, d_phi_d_psi, Hub
 
 	!Potential, V, and its derivatives.
 	v = (rpar(1)**4)*((1e0_dp - ((y(3)*y(3))/(rpar(2)*rpar(2))))**2 +&
 		& ((y(2)*y(2))/(rpar(3)*rpar(3)))&
 		& + ((y(2)*y(2)*y(3)*y(3))/ (rpar(4)**4)))
 
-	d_phi_v = 2e0_dp*(rpar(1)**4)*(((y(2))/(rpar(3)*rpar(3)))+&
+	d_phi = 2e0_dp*(rpar(1)**4)*(((y(2))/(rpar(3)*rpar(3)))+&
 		& ((y(2)*y(3)*y(3))/(rpar(4)**4)))
 
-	d_psi_v = 2e0_dp*(rpar(1)**4)*(((-2e0_dp*y(3))/(rpar(2)*rpar(2)))*(1e0_dp &
+	d_psi = 2e0_dp*(rpar(1)**4)*(((-2e0_dp*y(3))/(rpar(2)*rpar(2)))*(1e0_dp &
 		&-((y(3)*y(3))/(rpar(2)*rpar(2))))+ &
 		&((y(2)*y(2)*y(3))/(rpar(4)**4)))
 
-	dd_phi_v = 2e0_dp*(rpar(1)**4)*((1e0_dp/(rpar(3)*rpar(3)))+&
+	dd_phi = 2e0_dp*(rpar(1)**4)*((1e0_dp/(rpar(3)*rpar(3)))+&
 		&((y(3)*y(3))/(rpar(4)**4)))
 
-	dd_psi_v = 2e0_dp*(rpar(1)**4)*(((-2e0_dp)/(rpar(2)*rpar(2)))+ &
+	dd_psi = 2e0_dp*(rpar(1)**4)*(((-2e0_dp)/(rpar(2)*rpar(2)))+ &
 		&((4e0_dp*y(3)*y(3))/(rpar(2)**4))+&
 		& ((y(2)*y(2))/(rpar(4)**4)))
 
-	d_phi_d_psi_v = (4e0_dp*(rpar(1)**4)*y(2)*y(3))/(rpar(4)**4)
+	d_phi_d_psi = (4e0_dp*(rpar(1)**4)*y(2)*y(3))/(rpar(4)**4)
 
 	hub = sqrt(rpar(5)*(.5e0_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
+  if (hub<0) then
+		print*,"Hubble parameter < 0"
+		ier=1
+		return
+	end if
 
 	!Partial derivatives of the RHS vector in system of equations.
 	djac(1,1)= 0e0_dp
-	djac(1,2)= .5e0_dp*(1e0_dp/hub)*rpar(5)*d_phi_v
-	djac(1,3)= .5e0_dp*(1e0_dp/hub)*rpar(5)*d_psi_v
+	djac(1,2)= .5e0_dp*(1e0_dp/hub)*rpar(5)*d_phi
+	djac(1,3)= .5e0_dp*(1e0_dp/hub)*rpar(5)*d_psi
 	djac(1,4)= .5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)
 	djac(1,5)= .5e0_dp*(1e0_dp/hub)*rpar(5)*y(5)
 	djac(2,1)= 0e0_dp
@@ -420,13 +394,13 @@ subroutine FCVDJAC (NEQ, T, Y, FY, DJAC, H, IPAR, RPAR,&
 	djac(3,4)= 0e0_dp
 	djac(3,5)= 1e0_dp
 	djac(4,1)= 0e0_dp
-	djac(4,2)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)*d_phi_v - dd_phi_v
-	djac(4,3)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)*d_psi_v - d_phi_d_psi_v
+	djac(4,2)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)*d_phi - dd_phi
+	djac(4,3)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)*d_psi - d_phi_d_psi
 	djac(4,4)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)*y(4) - 3e0_dp*hub
 	djac(4,5)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)*y(5)
 	djac(5,1)= 0e0_dp
-	djac(5,2)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(5)*d_phi_v - d_phi_d_psi_v
-	djac(5,3)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(5)*d_psi_v - dd_psi_v
+	djac(5,2)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(5)*d_phi - d_phi_d_psi
+	djac(5,3)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(5)*d_psi - dd_psi
 	djac(5,4)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(4)*y(5)
 	djac(5,5)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(5)*y(5) - 3e0_dp*hub
 

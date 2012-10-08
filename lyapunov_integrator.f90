@@ -1,21 +1,36 @@
 !*******************************************************************************
-!Layne Price, University of Auckland, May 15, 2012.
+!Layne Price, University of Auckland, October 8, 2012.
 !*******************************************************************************
 
 !SUMMARY:
 !A program that does integration for two field hybrid inflation.  Uses the
-!integrator LESNLS from the LLNL SUNDIALS package, which requires the RHS of the
-!ODE to be expressed in the external subroutine FCVFUN and the Jacobian in the
-!external subroutine FCVDJAC.  These are included below the main program.
-!LESNLS functions are stored in a library.
+!integrator LESNLS from http://people.math.gatech.edu/~dieci/software-les.html
+!by Luca Dieci to perform nonlinear integration and to calculate the Lyapunov
+!exponents.
+
+!CAVEAT:
+!A good calculation of the Lyapunov exponents requires integration over a large
+!range of time.  However, because the system that we are integrating is
+!dissipative, we know that at (very) late times all orbits will be at one of the
+!fixed points corresponding to the minima of the potential.  Furthermore,
+!friction will inevitably force the late time Lyapunov exponents --> 0.
+!Consequently, any calculation of the Lyapunov exponents is merely suggestive
+!and is truly representative only for systems with very little to no friction
+!and in the late time limit.  Furthermore, the Lyapunov exponents are not
+!invariant with respect to spacetime diffeomorphism, so the value we calculate
+!here will be meaningful only for comoving observers.  However, the overall sign
+!of the LE will remain the same, implying that if we find a LE>0, then any
+!observer should be able to find a positive LE.
 
 !OUTLINE:
 !The program architecture is as follows: We parallelize using OpenMPI; load ICs
 !according to the method specified in the namelist; integrate the initial
-!condition; sort the initial condition into a "success" array if it reaches N>65
-!and into a "fail" array if it reaches the minimum of the potential without
-!inflating.  A new IC is chosen and the integration is repeated until we get
-!enough points.  Counters on the number of points found is collected on the
+!condition and calculate the Lyapunov exponent; sort the initial condition into
+!a "success" array if it reaches N>65 and into a "fail" array if it reaches the
+!minimum of the potential without inflating. The Lyapunov exponents can be
+!either recorded in a linked list at each integration step or ????.
+!A new IC is then chosen and the integration is repeated until we get
+!enough points.  Counters on the number of points found are collected on the
 !master thread and stats are printed.
 
 !OPTIONS:
@@ -47,7 +62,8 @@
 !a new file without worrying about whether the unit has already been used.  The
 !libraries from the SUNDIALS package are necessary to do the integration.  The
 !modules use sorting and location routines that are collected in the sorters
-!module.
+!module.  All routines needed for the calculation of Lyapunov exponents are
+!contained in the lyapunov_subroutines module.
 
 !NOTE:  The Y vector corresponds to:
 !Y(1)=N, Y(2)=phi, Y(3)=psi, Y(4)=phi_dot, Y(5)=psi_dot.
@@ -70,16 +86,17 @@ program lyapunov_integrator
 	real(dp), dimension(5) :: yref		!Ref field for zooming proc.
 	real(dp) :: t0, tout, dt		!Timers.
 	!Counters & unit numbers
-	integer:: i, success, counter, iccounter, sucunit,&
-		& failunit, failcount, localcount
+	integer:: i, j, success, counter, iccounter, sucunit,&
+		& failunit, failcount, localcount, burnin
 	integer :: errorcount, iend
 	integer :: badfieldcounter, badfieldlocal, successlocal, faillocal,&
 		& errorlocal, ierr, rc
 	!Program variables.
 	integer :: ic, trajnumb, points, u, numb
 	real(dp) :: check, v, ratio, toler
-	logical :: leave, allfailcheck, printing, traj
+	logical :: leave, allfailcheck, printing, traj, lyap
 	logical :: integr_ch
+  character(len=12) :: fname
 	!Variables to load IC from file for direct read or interpolation (ic=4,5)
 	real(dp), dimension(:,:), allocatable :: sample_table, ic_table
 	!Lists to record trajectory and lyapunov exponents.
@@ -88,10 +105,10 @@ program lyapunov_integrator
 	integer :: numtasks, rank
   !LESNLS parameters
   external :: getdf, getf
-  integer, parameter :: le_m=5, n=1 !Dimn of problem=le_m, and numb of LEs=n.
+  integer, parameter :: le_m=5, n=3 !Dimn of problem=le_m, and numb of LEs=n.
   integer, parameter :: ifdim=le_m*le_m+11*le_m*n+13*le_m+8*n+63
   real(dp) :: tolt,tolq,toll(n)
-  real(dp) :: lyap_exp(n), le_y0(le_m,n), dt_lyap
+  real(dp) :: lyap_exp(n), dt_lyap
   integer :: ipar(13), iflag, inarr(5)
   real(dp) :: fwork(ifdim), x0(le_m,n), rearr(5)
 
@@ -105,6 +122,11 @@ program lyapunov_integrator
 	open(unit=newunit(u), file="parameters_hybrid.txt", status="old", delim = "apostrophe")
 	read(unit=u, nml=ics)
 	close(unit=u)
+
+  !Record Lyapunov Exponents at each step?
+  lyap=.true.
+  !Test with or without friction?
+  friction=.true.
 
 	!Global counters.
 	counter = 0
@@ -146,33 +168,13 @@ program lyapunov_integrator
 	call init_random_seed(rank)
 
 	!Set some params for LESNLS integrator.
-  call lesnls_parameters(ipar,rearr,tolt,tolq,toll,ifdim,x0)
+  call lesnls_parameters(ipar,rearr,tolt,tolq,toll,ifdim,x0,lyap)
   call reinit_lesnls(t0,tout,dt,ipar)
 
-
 	!Set first IC.
-	if (IC == 1) then
-		!Zero vel slice.
-		call D_IC_ZEROV(Y0)
-	else if (IC == 2) then
-		!Eq energy slice.
-		call D_IC_EQEN(Y0,iccounter)
-	else if (IC==3) then
-		!Subslice of eq en slice.
-		call EQEN_SLICING(Y0)
-	else if (IC==4) then
-		!Metropolis sample a dataset.
-		call IC_METR_INIT(Y0, iccounter, sample_table, 10000)
-	else if (IC==5) then
-		!Read IC from a file.
-		call ic_file_init(y0, rank,numtasks,ic_table)
-	else if (IC==6) then
-		!Zoom in on one point on eq en surface.
-		call ic_zoom_init(y0, yref, iccounter, toler)
-  else if (ic==7) then
-    !Get a fixed initial condition.
-    call fixed_ic(y0)
-	end if
+  burnin=10000
+  call ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
+  &numtasks, ic_table, yref, toler)
 	Y=Y0
 
   !Initialize integrator.
@@ -185,6 +187,7 @@ program lyapunov_integrator
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.	!Exit condition.
 icloop: 	do while (integr_ch)
+print*,"localcount",localcount
 
 		!Count numb of times each thread goes through loop.
 		localcount = localcount + 1
@@ -203,7 +206,12 @@ icloop: 	do while (integr_ch)
 
     !###################################################################
 		!Perform the integration.
-    iend=3000000
+    if (friction) then
+      iend=30000
+    else
+      iend=20000
+    end if
+
 intloop:	do i=1,iend
 
 			!Take field values if recording trajectory. Previously initialized
@@ -221,7 +229,13 @@ intloop:	do i=1,iend
       !*********************************
 
       !Record Lyapunov exponents and time as linked list.
-      call rec_LE(lyap_exp,t0,Y(1),le_list)
+      if (lyap) then
+        if (i<600) then
+          call rec_LE(lyap_exp,t0,y,le_list)
+        else if (mod(i,50)==0) then
+          call rec_LE(lyap_exp,t0,y,le_list)
+        end if
+      end if
 
       !Check succ or fail condition: N>65 success=1, and N<65 failure=0.
 			call succ_or_fail(Y, success, successlocal, faillocal,&
@@ -230,11 +244,11 @@ intloop:	do i=1,iend
 			if (leave) exit intloop
 			
 			!Tells if not enough time for fields to evolve.
-			if (i==iend) then
-				errorlocal = errorlocal + 1
-				if (printing) print*, "Error: field didn't reach minima."
-			end if
-			if(printing .and. MOD(i,iend/10)==0 .and. .not. traj) print*,"i is getting big...",i
+			!if (i==iend) then
+			!	errorlocal = errorlocal + 1
+			!	if (printing) print*, "Error: field didn't reach minima."
+			!end if
+			!if(printing .and. MOD(i,iend/10)==0 .and. .not. traj) print*,"i is getting big...",i
 		end do intloop
     !###################################################################
 
@@ -247,19 +261,25 @@ intloop:	do i=1,iend
       call ll_del_all(ytraj)
     end if
 
-    !Print the Lyap exps.
-    open(unit=newunit(numb),file="le_name.bin",form="unformatted")
-   ! write(unit=numb) "Initial condition:"
-   ! write(unit=numb) psi_0,phi_0,psi_dot_0,phi_dot_0
-   ! write(unit=numb) "------------------------------"
-    call print_del_traj(le_list,numb)
-    close(numb)
+    !Open file and write LEs.
+    numb=newunit(numb)
+    write(fname,'(a,i4.4,a)') "lexp",numb,".bin"
+    open(unit=numb,file=fname,status="new",form="unformatted")
+    if (lyap) then
+      !Print the Lyap exps.
+      call print_del_traj(le_list,numb)
+    else
+      write(unit=numb) Y(1),psi_0,phi_0,psi_dot_0,phi_dot_0,&
+        &(lyap_exp(j),j=1,size(lyap_exp))
+    end if
 
 		!Check if the integrator isn't finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing, check)
 		if (allfailcheck) exit icloop
 		!Determine loop exit condition.
-		if (ic<5 .or. ic==6) then
+    if (.not. friction) then
+      integr_ch=(localcount<points)
+    else if (ic<5 .or. ic==6) then
 			integr_ch=(successlocal<points)
 		else if (ic==5) then
 			integr_ch=(localcount<size(ic_table,1))
@@ -284,6 +304,8 @@ intloop:	do i=1,iend
 	if(rank==0) then
 		call hybrid_finalstats(ic, counter, failcount, &
 		&badfieldcounter, errorcount, printing)
+    if (printing) call le_stats(ipar, iflag, t0)
+    if (printing) print*, "Columns in LE files: ", size(lyap_exp)+6
 	end if
 
 	!End parallel.
@@ -300,6 +322,7 @@ end program lyapunov_integrator
   !subroutine to specify the rhs of linear equation of y'=a*y.
 
   subroutine getdf(le_m,y,a,inarr,rearr)
+    use lyapunov_subroutines, only : friction
   	use d_hybrid_initialconditions
   	implicit none
 
@@ -308,8 +331,8 @@ end program lyapunov_integrator
   	real(dp), dimension(le_m,le_m), intent(inout) :: a
   	integer, dimension(5), intent(inout) :: inarr
   	real(dp), dimension(5), intent(inout) :: rearr
-  	real(dp) :: v, d_phi, d_psi, dd_phi, dd_psi, d_phi_d_psi, sqrtterm
-!print*,"fromgetdf",y
+  	real(dp) :: v, d_phi, d_psi, dd_phi, dd_psi, d_phi_d_psi, hub
+
   	!potential, v, and its derivatives.
   	v = (rearr(1)**4e0_dp)*((1e0_dp - ((y(3)*y(3))/(rearr(2)*rearr(2))))**2e0_dp &
   	&+ ((y(2)*y(2))/(rearr(3)*rearr(3))) + ((y(2)*y(2)*y(3)*y(3))/ (rearr(4)**4e0_dp)))
@@ -328,34 +351,44 @@ end program lyapunov_integrator
 
   	d_phi_d_psi = (4e0_dp*(rearr(1)**4e0_dp)*y(2)*y(3))/(rearr(4)**4e0_dp)
 
-  	sqrtterm = sqrt(rearr(5)*(.5e0_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
+  	hub = sqrt(rearr(5)*(.5e0_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
 	
   	!partial derivatives of the rhs vector in system of equations.
-  	a(1,1)= sqrtterm
-  	a(1,2)= .5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*d_phi
-  	a(1,3)= .5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*d_psi
-  	a(1,4)= .5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(4)
-  	a(1,5)= .5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(5)
-  	a(2,1)= 0e0_dp
-  	a(2,2)= 0e0_dp
-  	a(2,3)= 0e0_dp
-  	a(2,4)= 1e0_dp
-  	a(2,5)= 0e0_dp
-  	a(3,1)= 0e0_dp
-  	a(3,2)= 0e0_dp	
-  	a(3,3)= 0e0_dp
-  	a(3,4)= 0e0_dp
-  	a(3,5)= 1e0_dp
-  	a(4,1)= 0e0_dp
-  	a(4,2)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(4)*d_phi - dd_phi
-  	a(4,3)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(4)*d_psi - d_phi_d_psi
-  	a(4,4)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(4)*y(4) - 3e0_dp*sqrtterm
-  	a(4,5)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(4)*y(5)
-  	a(5,1)= 0e0_dp
-  	a(5,2)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(5)*d_phi - d_phi_d_psi
-  	a(5,3)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(5)*d_psi - dd_psi
-  	a(5,4)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(4)*y(5)
-  	a(5,5)= -1.5e0_dp*(1e0_dp/sqrtterm)*rearr(5)*y(5)*y(5) - 3e0_dp*sqrtterm
+    if (friction) then
+  	  a(1,1)= hub
+  	  a(1,2)= .5e0_dp*(1e0_dp/hub)*rearr(5)*d_phi
+  	  a(1,3)= .5e0_dp*(1e0_dp/hub)*rearr(5)*d_psi
+  	  a(1,4)= .5e0_dp*(1e0_dp/hub)*rearr(5)*y(4)
+  	  a(1,5)= .5e0_dp*(1e0_dp/hub)*rearr(5)*y(5)
+  	  a(2,1)= 0e0_dp
+  	  a(2,2)= 0e0_dp
+  	  a(2,3)= 0e0_dp
+  	  a(2,4)= 1e0_dp
+  	  a(2,5)= 0e0_dp
+  	  a(3,1)= 0e0_dp
+  	  a(3,2)= 0e0_dp	
+  	  a(3,3)= 0e0_dp
+  	  a(3,4)= 0e0_dp
+  	  a(3,5)= 1e0_dp
+  	  a(4,1)= 0e0_dp
+  	  a(4,2)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(4)*d_phi - dd_phi
+  	  a(4,3)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(4)*d_psi - d_phi_d_psi
+  	  a(4,4)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(4)*y(4) - 3e0_dp*hub
+  	  a(4,5)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(4)*y(5)
+  	  a(5,1)= 0e0_dp
+  	  a(5,2)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(5)*d_phi - d_phi_d_psi
+  	  a(5,3)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(5)*d_psi - dd_psi
+  	  a(5,4)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(4)*y(5)
+  	  a(5,5)= -1.5e0_dp*(1e0_dp/hub)*rearr(5)*y(5)*y(5) - 3e0_dp*hub
+    else
+      a=0e0_dp
+      a(4,2)=-1e0_dp*dd_phi
+      a(4,3)=-1e0_dp*d_phi_d_psi
+      a(5,2)=-1e0_dp*d_phi_d_psi
+      a(5,3)=-1e0_dp*dd_psi
+      a(2,4)=1e0_dp
+      a(3,5)=1e0_dp
+    end if
 
 
   end subroutine getdf
@@ -365,6 +398,7 @@ end program lyapunov_integrator
   !parameters are defined in d_hybrid_initialconditions
 
   subroutine getf(le_m,y,ydot,inarr,rearr)
+    use lyapunov_subroutines, only : friction
   	use d_hybrid_initialconditions
   	implicit none
 
@@ -373,11 +407,9 @@ end program lyapunov_integrator
     real(dp), dimension(5), intent(inout) :: ydot
   	integer, dimension(5), intent(in) :: inarr
   	real(dp), dimension(5), intent(in) :: rearr
-  	real(dp) :: v, d_phi, d_psi, dd_phi, dd_psi, d_phi_d_psi, sqrtterm
+  	real(dp) :: v, d_phi, d_psi, dd_phi, dd_psi, d_phi_d_psi, hub
 
-!print*,"fromgetf",y
-
-  	!potential, v, and its derivatives.
+  	!Potential, v, and its derivatives.
   	v = (rearr(1)**4e0_dp)*((1e0_dp - ((y(3)*y(3))/(rearr(2)*rearr(2))))**2e0_dp + &
   		&((y(2)*y(2))/(rearr(3)*rearr(3))) + ((y(2)*y(2)*y(3)*y(3))/ (rearr(4)**4e0_dp)))
 
@@ -388,23 +420,14 @@ end program lyapunov_integrator
       &((y(3)*y(3))/(rearr(2)*rearr(2))))&
   		&+ ((y(2)*y(2)*y(3))/(rearr(4)**4e0_dp)))
 
-  	dd_phi = 2e0_dp*(rearr(1)**4e0_dp)*((1e0_dp/(rearr(3)*rearr(3)))+&
-      &((y(3)*y(3))/(rearr(4)**4e0_dp)))
+  	hub = sqrt(rearr(5)*(.5e0_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
 
-  	dd_psi = 2e0_dp*(rearr(1)**4e0_dp)*(((-2e0_dp)/(rearr(2)*rearr(2)))+&
-     & ((4e0_dp*y(3)*y(3))/(rearr(2)**4e0_dp))+ &
-  		&((y(2)*y(2))/(rearr(4)**4e0_dp)))
-
-  	d_phi_d_psi = (4e0_dp*(rearr(1)**4e0_dp)*y(2)*y(3))/(rearr(4)**4e0_dp)
-
-  	sqrtterm = sqrt(rearr(5)*(.5e0_dp*((y(4)*y(4)) + (y(5)*y(5))) + v))
-
-	
-   	!equations of motion.
-  	ydot(1) = sqrtterm
+   	!Equations of motion with and without friction.
+    if (.not. friction) hub = 0e0_dp
+  	ydot(1) = hub
   	ydot(2) = y(4)
   	ydot(3) = y(5)
-  	ydot(4) = -3e0_dp*sqrtterm*y(4)-d_phi
-  	ydot(5) = -3e0_dp*sqrtterm*y(5)-d_psi	
+  	ydot(4) = -3e0_dp*hub*y(4)-d_phi
+  	ydot(5) = -3e0_dp*hub*y(5)-d_psi	
 
   end subroutine getf

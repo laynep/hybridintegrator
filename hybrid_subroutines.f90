@@ -418,5 +418,42 @@ pure real(dp) function euclidean(pt1,pt2)
 
 end function euclidean
 
+subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
+  &numtasks, ic_table, yref, toler)
+  implicit none
+
+  real(dp), dimension(:), intent(out) :: y0, yref
+  integer, intent(inout) :: ic, iccounter, rank, numtasks, burnin
+  real(dp), dimension(:,:), allocatable, intent(out) :: sample_table, ic_table
+  real(dp), intent(inout) :: toler
+
+	if (IC == 1) then
+		!Zero vel slice.
+		call D_IC_ZEROV(Y0)
+	else if (IC == 2) then
+		!Eq energy slice.
+		call D_IC_EQEN(Y0,iccounter)
+	else if (IC==3) then
+		!Subslice of eq en slice.
+		call EQEN_SLICING(Y0)
+	else if (IC==4) then
+		!Metropolis sample a dataset.
+		call IC_METR_INIT(Y0, iccounter, sample_table, burnin)
+	else if (IC==5) then
+		!Read IC from a file.
+		call ic_file_init(y0, rank,numtasks,ic_table)
+	else if (IC==6) then
+		!Zoom in on one point on eq en surface.
+		call ic_zoom_init(y0, yref, iccounter, toler)
+  else if (ic==7) then
+    !Get a fixed initial condition.
+    call fixed_ic(y0)
+  else
+    print*,"ERROR: IC out of range."
+	end if
+
+end subroutine ic_init
+
+
 end module hybrid_subroutines
 
