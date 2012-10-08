@@ -368,7 +368,7 @@ end subroutine eqen_eqvel
 !subroutine that will take as input a point Y0 and a sample table, sample_table.  This subroutine will perform a nearest neighbor interpolation on sample_table with respect to the density of points, within a given box size, eps.  By default this will not give duplicates, i.e. Y_init != Y_fin.  If you want to override this, specify dup=1 .
 
 subroutine ic_metr(y,sample_table,iccounter,eps,dup,test)
-	use sorters, only : locate, heapsorttotal
+	use sorters, only : locate, heapsort
 	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y
@@ -393,7 +393,7 @@ subroutine ic_metr(y,sample_table,iccounter,eps,dup,test)
 		boxcover=ceiling(sample_table/eps)
 		if (allocated(sample_table)) deallocate(sample_table)
 		!count numb of boxes.
-		call heapsorttotal(boxcover)
+		call heapsort(boxcover)
 		n=1
 		do i=2,size(boxcover,1)
 			do j=1,size(boxcover,2)
@@ -416,18 +416,18 @@ subroutine ic_metr(y,sample_table,iccounter,eps,dup,test)
 		!Count elts per box. Copy to numbpoints_sample.
 		start=2
 doi:		do i=1,n
-	doj:		do j=start,size(boxcover,1)
-		dok1:		do k=1,size(boxcover,2)
-					check=.true.
-					if (boxcover(j,k).ne.boxcover(j-1,k)) then
-						check=.false.
-						exit dok1
-					end if
-				end do dok1
+doj:  		do j=start,size(boxcover,1)
+dok1:   		do k=1,size(boxcover,2)
+			    		check=.true.
+				    	if (boxcover(j,k).ne.boxcover(j-1,k)) then
+					    	check=.false.
+					    	exit dok1
+				    	end if
+			    	end do dok1
 				if (check) then
 					numbpoints_sample(i,5)=numbpoints_sample(i,5)+1
 				else
-		dok2:			do k=1,size(boxcover,2)
+dok2:			do k=1,size(boxcover,2)
 						numbpoints_sample(i+1,k)=boxcover(j,k)
 					end do dok2
 					numbpoints_sample(i+1,5)=1
@@ -488,7 +488,7 @@ subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 	namelist /sample/ samp_len, samp_wid, datafile
 
 	!Set IC at random on EQEN slice.
-	call D_IC_EQEN(Y,iccounter)
+	call d_ic_eqen(y,iccounter)
 
 	!Get info on sample table from namelist.
 	open(unit=newunit(u), file="parameters_hybrid.txt", status="old",&
@@ -501,6 +501,8 @@ subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 	allocate(sample_table(samp_len,samp_wid))
 	sample_table=0_dp
 	!Data *must* be in form Y(2),...,Y(5), where Y(1)=0_dp assumed.
+
+  print*,"OPENING FILE ",datafile
 	open(unit=newunit(u), file=datafile, status="old", form="unformatted")
 	do i=1,size(sample_table,1)		
 		read(unit=u,iostat=ierr) (sample_table(i,j),j=2,5)
@@ -539,7 +541,7 @@ real(dp) function accept_ratio(Y1,Y2,eps)
 	real(dp), intent(in) :: eps
 	real(dp) :: a, p1,p2
 	integer, dimension(5) :: test
-	LOGICAL :: check
+	logical :: check
 
 	!Calc probabilities.
 	!Find where to start in table. Returns first value below Y1(2).
