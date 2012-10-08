@@ -17,19 +17,19 @@
 	mu = 500D3,
 	nu = .015D3,
 	lambda = 6.8D-3,
-	energy_scale=1E-2
+	energy_scale=1E3
 /
 &ics
-	points=1,
-	IC=2,
+	points=100,
+	IC=4,
 	dt=5D5,
 	printing=.true.,
 	traj=.false.
 /
 &sample
-	samp_len=2500000,
+	samp_len=100000,
 	samp_wid=4,
-	datafile="datasample.bin"
+	datafile="check_succ1e0.bin"
 /
 &filetoread
 	fname="test0020.bin",

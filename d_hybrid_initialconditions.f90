@@ -26,21 +26,21 @@ module d_hybrid_initialconditions
   use types, only : dp, pi
   implicit none
 
-	!global data.
+	!Global data.
 	real(dp) :: phi_0, psi_0, phi_dot_0, psi_dot_0
-	real(dp), parameter :: m_planck=1000_dp
-	real(dp), parameter :: beta=8.37758040957278_dp/(m_planck*m_planck)
+	real(dp), parameter :: m_planck=1000e0_dp
+	real(dp), parameter :: beta=8.37758040957278e0_dp/(m_planck*m_planck)
 	real(dp) :: m
 	real(dp) :: mu
-	real(dp), parameter :: phi_min=0_dp
-	real(dp), parameter :: phi_max=.2_dp*m_planck
-	real(dp), parameter :: psi_min=0_dp
-	real(dp), parameter :: psi_max=.2_dp*m_planck
+	real(dp), parameter :: phi_min=0e0_dp
+	real(dp), parameter :: phi_max=.2e0_dp*m_planck
+	real(dp), parameter :: psi_min=0e0_dp
+	real(dp), parameter :: psi_max=.2e0_dp*m_planck
 	real(dp) :: nu
 	real(dp) :: energy_scale
 	real(dp) :: lambda
 
-	!for the nearest neighbor sampling.
+	!For the nearest neighbor sampling.
 	integer, dimension(:,:), allocatable :: numbpoints_sample
 	integer :: xxglobal_fail, xxglobal_succ
 
@@ -71,7 +71,7 @@ pure real(dp) function V_h(Y)
 
 	real(dp), dimension(:), intent(in) :: Y
 
-	V_h = (lambda*lambda*lambda*lambda)*((1_dp - ((Y(3)*Y(3))/(m*m)))**2_dp +&
+	V_h = (lambda*lambda*lambda*lambda)*((1e0_dp - ((Y(3)*Y(3))/(m*m)))**2e0_dp +&
 		& ((Y(2)*Y(2))/(mu*mu)) + ((Y(2)*Y(2)*Y(3)*Y(3))/ (nu*nu*nu*nu)))
 
 end function V_h
@@ -110,24 +110,24 @@ subroutine d_ic_eqen(y,iccounter)
 		Y(3)= (rand*(psi_max-psi_min)) + psi_min
 	
 		!Energy density remaining in kinetic term.
-		rho_kinetic = (energy_scale**4_dp) - V_h(Y)
+		rho_kinetic = (energy_scale**4e0_dp) - V_h(Y)
 		if (rho_kinetic<0) cycle
 		!Set so that psi_dot is chosen with flat prior.
-		dot_max = SQRT(2_dp*rho_kinetic)
-		dot_min = -1_dp*SQRT(2_dp*rho_kinetic)	
+		dot_max = SQRT(2e0_dp*rho_kinetic)
+		dot_min = -1e0_dp*SQRT(2e0_dp*rho_kinetic)	
 		!Sets the psi_dot IC to the range psi_dot_max to psi_dot_min
 		call random_number(rand)
 		Y(a) = (rand*(dot_max-dot_min)) + dot_min
 	
-		if(2_dp*rho_kinetic - (Y(a)*Y(a)) > 0) exit	
+		if(2e0_dp*rho_kinetic - (Y(a)*Y(a)) > 0) exit	
 	end do
 		
 	!Set the phi_dot IC by the total energy density constraint.
 	call random_number(rand)
 	if(rand < .5) then
-		Y(b) = SQRT(2_dp*rho_kinetic - (Y(a)*Y(a)))
+		Y(b) = SQRT(2e0_dp*rho_kinetic - (Y(a)*Y(a)))
 	else 
-		Y(b) = -1_dp*SQRT(2E0*rho_kinetic - (Y(a)*Y(a)))
+		Y(b) = -1e0_dp*SQRT(2E0*rho_kinetic - (Y(a)*Y(a)))
 	end if	
 
 	!Set initial conditions.
@@ -137,7 +137,7 @@ subroutine d_ic_eqen(y,iccounter)
 	phi_dot_0 = Y(4)
 
 	!Reinitialize the e-fold value: Y(1)~N.
-	Y(1)=0_dp 		
+	Y(1)=0e0_dp 		
 
 end subroutine d_ic_eqen
 
@@ -177,8 +177,8 @@ subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 	end if
 
 	!Set the max and min params.
-	maxim=(y0+tol/2_dp)
-	minim=(y0-tol/2_dp)
+	maxim=(y0+tol/2e0_dp)
+	minim=(y0-tol/2e0_dp)
 
 	!Initialize y1.
 	y1=y0
@@ -206,11 +206,11 @@ subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 			!sets the psi_dot ic to the range psi_dot_max to psi_dot_min
 			call random_number(rand)
 			y1(y) = (rand*(maxim(y)-minim(y))) + minim(y)
-			if(2_dp*rho_kinetic - (y1(y)*y1(y)) > 0) exit do2
+			if(2e0_dp*rho_kinetic - (y1(y)*y1(y)) > 0) exit do2
 		end do do2
 		!Set the phi_dot IC by the total energy density constraint.
 		sgn=y0(x)/abs(y0(x))
-		Y1(x) = sgn*sqrt(2_dp*rho_kinetic - (Y1(y)*Y1(y)))
+		Y1(x) = sgn*sqrt(2e0_dp*rho_kinetic - (Y1(y)*Y1(y)))
 		!Exit condition.
 		if (metric(y0(2:5),y1(2:5)) .le. tol ) exit do1
 	end do do1
@@ -222,7 +222,7 @@ subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 	phi_dot_0 = Y1(4)
 
 	!Reinitialize the e-fold value: Y(1)~N.
-	Y1(1)=0_dp 		
+	Y1(1)=0e0_dp 		
 
 end subroutine ic_eqen_pert
 
@@ -251,13 +251,13 @@ subroutine d_ic_zerov(y)
 	psi_0 = Y(3)
 
 	!Sets velocities to zero initially.
-	Y(4)=0_dp
+	Y(4)=0e0_dp
 	phi_dot_0=Y(4)
-	Y(5)=0_dp
+	Y(5)=0e0_dp
 	psi_dot_0=Y(5)
 
 	!Reinitialize the cosmology equation values.
-	Y(1)=0_dp 
+	Y(1)=0e0_dp 
 		
 	
 end subroutine d_ic_zerov
@@ -270,11 +270,11 @@ subroutine fixed_ic(y)
 
 	real(dp), dimension(5), intent(out) :: Y
 
-	phi_0 = 0_dp
-	psi_0 = 4_dp*m_planck
-	phi_dot_0 =0_dp
-	psi_dot_0 =0_dp
-	Y(1)=0_dp
+	phi_0 = 0e0_dp
+	psi_0 = 4e0_dp*m_planck
+	phi_dot_0 =0e0_dp
+	psi_dot_0 =0e0_dp
+	Y(1)=0e0_dp
 	Y(2)=phi_0
 	Y(3)=psi_0
 	Y(4)=phi_dot_0
@@ -293,7 +293,7 @@ subroutine eqen_slicing(y)
 	real(dp) :: phi_dot_max, phi_dot_min, rho_kinetic, psi_dot_max, psi_dot_min
 
 	!Initialize.
-	Y=0_dp
+	Y=0e0_dp
 	do
    	!Set phi_0 randomly.
     call random_number(rand_1)
@@ -306,13 +306,13 @@ subroutine eqen_slicing(y)
     psi_0 = Y(3)
 
     !Find remaining energy.
-     rho_kinetic = (energy_scale**4_dp) - V_h(Y)
+     rho_kinetic = (energy_scale**4e0_dp) - V_h(Y)
 
     if (rho_kinetic<0) then
 			cycle
 		end if
 
-    chi = -1_dp*SQRT(rho_kinetic)
+    chi = -1e0_dp*SQRT(rho_kinetic)
     Y(4)=chi
     phi_dot_0=chi
     Y(5)=chi
@@ -332,7 +332,7 @@ subroutine eqen_eqvel(y)
 	real(dp) :: rand_1, rho_kinetic, chi
 	
 	!Initialize
-	Y=0_dp
+	Y=0e0_dp
 
 	do
 		!Set phi_0 randomly.
@@ -346,7 +346,7 @@ subroutine eqen_eqvel(y)
     psi_0 = Y(3)
 
 		!Find remaining energy.
-    rho_kinetic = (energy_scale**4_dp) - V_h(Y)
+    rho_kinetic = (energy_scale**4e0_dp) - V_h(Y)
 
 		if (rho_kinetic<0) cycle
 
@@ -367,26 +367,31 @@ end subroutine eqen_eqvel
 
 !subroutine that will take as input a point Y0 and a sample table, sample_table.  This subroutine will perform a nearest neighbor interpolation on sample_table with respect to the density of points, within a given box size, eps.  By default this will not give duplicates, i.e. Y_init != Y_fin.  If you want to override this, specify dup=1 .
 
-subroutine ic_metr(y,sample_table,iccounter,eps,dup,test)
+subroutine ic_metr(y,sample_table,iccounter,epsil,dup)
 	use sorters, only : locate, heapsort
 	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y
 	real(dp), dimension(:,:), allocatable, intent(inout) :: sample_table
-	real(dp), optional, intent(inout) :: eps
+	real(dp), optional, intent(inout) :: epsil
 	integer, intent(in) :: iccounter
-	integer, optional, intent(in) :: test
+	integer :: test
 	integer, optional, intent(in) :: dup
-	real(dp) :: accept, rand
+	real(dp) :: accept, rand, eps
 	real(dp), dimension(5) :: yprop
 	integer, dimension(:,:), allocatable :: boxcover
 	integer :: i,j,k, n, start
 	logical :: check
 
 	!Load eps if not provided.
-	if (.not. present(eps)) eps=1_dp
+	if (present(epsil)) then
+    eps=epsil
+  else
+    eps=1e0_dp
+  end if
 
 	!Load the density calculation if not already done.
+  !numbpoints_sample global var defined in this mod.
 	if (.not. allocated(numbpoints_sample)) then
 		!box cover, of size eps.
 		allocate(boxcover(size(sample_table,1),size(sample_table,2)))
@@ -443,15 +448,10 @@ dok2:			do k=1,size(boxcover,2)
 	end if
 	do
 		!Get a new point on eqen slice.
-		if (.not. present(test)) then 
-			call D_IC_EQEN(YPROP,iccounter)
-		else
-			!TEST!!!!
-			call EQEN_SLICING(YPROP)
-		end if
-
+		call d_ic_eqen(yprop,iccounter)
+		
 		!Calc accept ratio
-		accept=accept_ratio(Y,YPROP,eps)
+		accept=accept_ratio(y,yprop,eps)
 
 		!Gen rand numb
 		call random_number(rand)
@@ -464,7 +464,7 @@ dok2:			do k=1,size(boxcover,2)
 		end if
 		xxglobal_fail=xxglobal_fail+1
 
-		!if NO DUPLICATES, then cycle UNTIL GET UNIQUE NUMB, OTHERWISE RETURN
+		!If no duplicates, then cycle until get unique numb, otherwise return
 		if (present(dup)) exit		
 	end do
 
@@ -499,15 +499,12 @@ subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
 		
 	!Load the data to sample via nearest neighbor interpolation.
 	allocate(sample_table(samp_len,samp_wid))
-	sample_table=0_dp
+	sample_table=0e0_dp
 	!Data *must* be in form Y(2),...,Y(5), where Y(1)=0_dp assumed.
 
-  print*,"OPENING FILE ",datafile
 	open(unit=newunit(u), file=datafile, status="old", form="unformatted")
 	do i=1,size(sample_table,1)		
 		read(unit=u,iostat=ierr) (sample_table(i,j),j=2,5)
-    print*,"TEST",(sample_table(i,j),j=2,5)
-
 		if (is_iostat_end(ierr)) exit
 	end do
 	close(unit=u)
@@ -548,8 +545,8 @@ real(dp) function accept_ratio(Y1,Y2,eps)
 	!Calc probabilities.
 	!Find where to start in table. Returns first value below Y1(2).
 	call locate(numbpoints_sample,Y1(2)/eps,start)
-	call locate(numbpoints_sample,Y1(2)/eps+1_dp,ending)
-	p1=0_dp
+	call locate(numbpoints_sample,Y1(2)/eps+1e0_dp,ending)
+	p1=0e0_dp
 
 	do i=start,ending
 		test=(/0,numbpoints_sample(i,1),numbpoints_sample(i,2),&
@@ -563,13 +560,13 @@ real(dp) function accept_ratio(Y1,Y2,eps)
 			end if
 		end do doj1
 		if (check) then
-			p1=numbpoints_sample(i,5)*1_dp
+			p1=numbpoints_sample(i,5)*1e0_dp
 			exit
 		end if
 	end do
 	call locate(numbpoints_sample,Y2(2)/eps,start)
-	call locate(numbpoints_sample,Y2(2)/eps+1_dp,ending)
-	p2=0_dp
+	call locate(numbpoints_sample,Y2(2)/eps+1e0_dp,ending)
+	p2=0e0_dp
 	do i=start,ending
 		test=(/0, numbpoints_sample(i,1),numbpoints_sample(i,2),&
 			&numbpoints_sample(i,3),numbpoints_sample(i,4) /)
@@ -583,24 +580,24 @@ real(dp) function accept_ratio(Y1,Y2,eps)
 		end do doj2
 
 		if (check) then
-			p2=numbpoints_sample(i,5)*1_dp
+			p2=numbpoints_sample(i,5)*1e0_dp
 			exit
 		end if
 	end do
 
-	if (p2<=1.1_dp) then
-		a=0_dp
+	if (p2<=1.1e0_dp) then
+		a=0e0_dp
 	!Avoid div by zero
 	else if (p1<=0e-10_dp) then
-		a=1_dp
+		a=1e0_dp
 	else
 		a=p2/p1
 	end if
-  !MIN(1_dp,a)
-  if (a<1_dp) then
+  !MIN(1e0_dp,a)
+  if (a<1e0_dp) then
     accept_ratio=a
   else
-    accept_ratio=1_dp
+    accept_ratio=1e0_dp
   end if
 
 end function accept_ratio
@@ -682,7 +679,7 @@ subroutine ic_fromarray(y,ic_table,x)
 	y(3)=ic_table(x,1)
 	y(4)=ic_table(x,4)
 	y(5)=ic_table(x,3)	
-	y(1)=0_dp
+	y(1)=0e0_dp
 	phi_0 = Y(2)
 	psi_0 = Y(3)
 	psi_dot_0 = Y(5)
