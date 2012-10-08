@@ -7,7 +7,7 @@
 !integrator FCVODE from the LLNL SUNDIALS package, which requires the RHS of the
 !ODE to be expressed in the external subroutine FCVFUN and the Jacobian in the
 !external subroutine FCVDJAC.  These are included below the main program.
-!FCVODE functions are stored in a library.
+!SUNDIALS functions are stored in a library.
 
 !OUTLINE:
 !The program architecture is as follows: We parallelize using OpenMPI; load ICs
@@ -15,7 +15,7 @@
 !condition; sort the initial condition into a "success" array if it reaches N>65
 !and into a "fail" array if it reaches the minimum of the potential without
 !inflating.  A new IC is chosen and the integration is repeated until we get
-!enough points.  Counters on the number of points found is collected on the
+!enough points.  Counters on the number of points found are collected on the
 !master thread and stats are printed.
 
 !OPTIONS:
@@ -403,7 +403,7 @@ subroutine fcvdjac (neq, t, y, fy, djac, h, ipar, rpar,&
 	djac(5,5)= -1.5e0_dp*(1e0_dp/hub)*rpar(5)*y(5)*y(5) - 3e0_dp*hub
 
 	!Success
-	IER = 0
+	ier = 0
 
 end subroutine fcvdjac
 

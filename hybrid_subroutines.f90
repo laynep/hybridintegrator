@@ -36,7 +36,6 @@ subroutine open_hybridfiles(rank,numtasks,sucunit,failunit, datatype, formt)
 		write(failname,'(a,i4.4,a)')'fail',failunit,'.bin'
 	end if
 
-
 	!Open.
 	if (present(formt)) then
 		open(unit=sucunit,status='new',file=sucname, form=formt)
@@ -264,7 +263,7 @@ subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 		& meth, itmeth, t0, t, itask, tout, dt)
 	implicit none
 
-	!FCVODE PARAMS
+	!FCVODE params
 	real(dp), intent(out) :: rpar(5)
 	integer, intent(out) :: meth, itmeth
 	integer(kind=8), intent(out) :: neq, nglobal
