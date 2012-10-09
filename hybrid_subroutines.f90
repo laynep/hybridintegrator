@@ -418,13 +418,14 @@ pure real(dp) function euclidean(pt1,pt2)
 end function euclidean
 
 subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
-  &numtasks, ic_table, yref, toler)
+  &numtasks, ic_table, yref, toler, printing)
   implicit none
 
   real(dp), dimension(:), intent(out) :: y0, yref
   integer, intent(inout) :: ic, iccounter, rank, numtasks, burnin
   real(dp), dimension(:,:), allocatable, intent(out) :: sample_table, ic_table
   real(dp), intent(inout) :: toler
+  logical, intent(in) :: printing
 
 	if (ic == 1) then
 		!Zero vel slice.
@@ -437,10 +438,14 @@ subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
 		call eqen_slicing(y0)
 	else if (ic==4) then
 		!Metropolis sample a dataset.
+    if (printing) print*, "Building Metropolis sample."
 		call ic_metr_init(y0, iccounter, sample_table, burnin)
+    if (printing) print*, "Burn in done."
 	else if (ic==5) then
 		!Read IC from a file.
+    if (printing) print*,"Getting ICs from file."
 		call ic_file_init(y0, rank,numtasks,ic_table)
+    if (printing) print*, "IC table built."
 	else if (ic==6) then
 		!Zoom in on one point on eq en surface.
 		call ic_zoom_init(y0, yref, iccounter, toler)

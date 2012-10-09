@@ -20,7 +20,7 @@
 	energy_scale=1E3
 /
 &ics
-	points=100,
+	points=10,
 	IC=4,
 	dt=5D5,
 	printing=.true.,

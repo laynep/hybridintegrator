@@ -174,7 +174,7 @@ program lyapunov_integrator
 	!Set first IC.
   burnin=10000
   call ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
-  &numtasks, ic_table, yref, toler)
+  &numtasks, ic_table, yref, toler, printing)
 	Y=Y0
 
   !Initialize integrator.
