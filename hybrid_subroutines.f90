@@ -10,6 +10,7 @@
 module hybrid_subroutines
   use types, only : dp
   use d_hybrid_initialconditions
+  use hybrid_metropolis
   implicit none
 
 contains
@@ -119,11 +120,11 @@ subroutine hybrid_initstats(ic,printing,infounit)
 	write(unit=u,fmt=*) "E=",energy_scale
 	if(printing) print*,"Lambda is ",lambda
 	write(unit=u,fmt=*) "Lambda is ",lambda
-       	if(printing) print*,"M is ",m
+ 	if(printing) print*,"M is ",m
 	write(unit=u,fmt=*) "M is ",m
-       	if(printing) print*,"mu is ",mu
+ 	if(printing) print*,"mu is ",mu
 	write(unit=u,fmt=*) "mu is ",mu
-       	if(printing) print*,"nu is ",nu
+ 	if(printing) print*,"nu is ",nu
 	write(unit=u,fmt=*) "nu is ",nu
 
 end subroutine hybrid_initstats
@@ -205,6 +206,9 @@ subroutine new_point(y0,iccounter,sample_table,ic, ic_table, yref, toler)
 	else if (ic==6) then
 		call ic_eqen_pert(yref,y0,iccounter,euclidean,toler)
   else if (ic==7) then
+    call fixed_ic(y0)
+  else
+    print*,"ERROR: Provided IC type is out-of-range."
     stop
   end if
 
@@ -231,30 +235,33 @@ subroutine succ_or_fail(Y, success, successlocal, faillocal, &
 	if (Y(1)>65_dp) then
 		success = 1
 		successlocal = successlocal + 1
-		if (ic==1) then
-			write(unit=sucunit),psi_0,phi_0
-		else
-			write(unit=sucunit), psi_0, phi_0,&
-			& psi_dot_0, phi_dot_0
-		end if
-		if(printing .and. mod(successlocal,1000)==0) then
-			print*,successlocal,success
-		end if
+		call write_ic_to_file(sucunit)
 		leave = .true.
 	elseif (check<0_dp) then
 		success = 0
 		faillocal = faillocal + 1
-		if (ic==1) then
-			write(unit=failunit),psi_0,phi_0
-		else
-			write(unit=failunit), psi_0, phi_0,&
-			& psi_dot_0, phi_dot_0
-		end if
-		if(printing .and. mod(successlocal,1000)==0) then
-			print*,successlocal,success
-		end if
+		call write_ic_to_file(failunit)
 		leave = .true.
 	end if
+
+  contains
+
+    subroutine write_ic_to_file(writeunit)
+      implicit none
+
+      integer, intent(in) :: writeunit
+
+      if (ic==1) then
+		  	write(unit=writeunit),psi_0,phi_0
+		  else
+		  	write(unit=writeunit), psi_0, phi_0,&
+		  	& psi_dot_0, phi_dot_0
+		  end if
+		  if(printing .and. mod(successlocal,1000)==0) then
+		  	print*,successlocal,success
+		  end if
+
+    end subroutine write_ic_to_file
 
 end subroutine succ_or_fail
 
@@ -417,6 +424,8 @@ pure real(dp) function euclidean(pt1,pt2)
 
 end function euclidean
 
+!Subroutine to obtain the first initial condition.  The way that the initial
+!conditions are chosen depend on the value of the integer ic.
 subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
   &numtasks, ic_table, yref, toler, printing)
   implicit none

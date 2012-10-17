@@ -13,34 +13,34 @@
 #per process, i.e. TotalPoints=points*numtasks.
 #
 &parameters
-	m = .03D3,
-	mu = 500D3,
-	nu = .015D3,
-	lambda = 6.8D-3,
-	energy_scale=1E3
+  m = .03D3,
+  mu = 500D3,
+  nu = .015D3,
+  lambda = 6.8D-3,
+  energy_scale=1E1
 /
 &ics
-	points=10,
-	IC=4,
-	dt=5D5,
-	printing=.true.,
-	traj=.false.
+  points=1000,
+  IC=2,
+  dt=5D5,
+  printing=.true.,
+  traj=.false.
 /
 &sample
-	samp_len=100000,
-	samp_wid=4,
-	datafile="check_succ1e0.bin"
+  samp_len=100000,
+  samp_wid=4,
+  datafile="check_succ1e0.bin"
 /
 &filetoread
-	fname="test0020.bin",
-	fleng=10,
-	fwid=4,
-	fform="unformatted"
+  fname="TESTING.bin",
+  fleng=10,
+  fwid=4,
+  fform="unformatted"
 /
 
 !NOTE:   N,phi,psi,phi_dot,psi_dot
 &zoom
-	yinit=0D0, 192.62487272549939, 36.837086537979189, 100.51774144090064, 99.479563953845854,
+  yinit=0D0, 192.62487272549939, 36.837086537979189, 100.51774144090064, 99.479563953845854,
   toler=1D-2
 /
 

@@ -169,7 +169,7 @@ program hybrid_integrator_d
 
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.	!Exit condition.
-icloop: 	do while (integr_ch)
+  icloop: 	do while (integr_ch)
 
 		!Count numb of times each thread gets a new IC.
 		localcount = localcount + 1
@@ -198,7 +198,7 @@ icloop: 	do while (integr_ch)
     !###################################################################
 		!Perform the integration.
     iend=3000000
-intloop:	do i=1,iend
+    intloop:	do i=1,iend
 
 			!Take field values if recording trajectory.
 			if (traj .and. mod(i,10)==0) call rec_traj(Y, ytraj)
@@ -406,11 +406,5 @@ subroutine fcvdjac (neq, t, y, fy, djac, h, ipar, rpar,&
 	ier = 0
 
 end subroutine fcvdjac
-
-
-
-
-
-
 
 

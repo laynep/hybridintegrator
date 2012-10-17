@@ -187,8 +187,7 @@ program lyapunov_integrator
 	!Loop over ICs until achieve numb of desired points.
 	integr_ch=.true.	!Exit condition.
 icloop: 	do while (integr_ch)
-print*,"localcount",localcount
-
+!print*,localcount, y0
 		!Count numb of times each thread goes through loop.
 		localcount = localcount + 1
 		!Get new point if on second or greater run.
@@ -207,7 +206,7 @@ print*,"localcount",localcount
     !###################################################################
 		!Perform the integration.
     if (friction) then
-      iend=30000
+      iend=3000000
     else
       iend=20000
     end if
