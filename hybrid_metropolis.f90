@@ -1,4 +1,7 @@
-!#############################################################################
+!###############################################################################
+!Layne Price, University of Auckland, September 2012
+!###############################################################################
+
 !Subroutines for building an MCMC Metropolis sampling of initial conditions from
 !a given data set for hybrid inflation.
 
@@ -15,7 +18,7 @@
 !subsequent links in the Markov chain.  Turning this off makes the sampler
 !pseudo-Metropolis, giving a non-representative sample of the interpolation
 !function, but it allows us to get unique points to test off of.
-!#############################################################################
+!###############################################################################
 
 module hybrid_metropolis
   use d_hybrid_initialconditions, only : numbpoints_sample, energy_scale,&
@@ -25,7 +28,11 @@ module hybrid_metropolis
 
 contains
 
-!Subroutine that will take as input a point y0 and a sample table, sample_table.  This subroutine will perform a nearest neighbor interpolation on sample_table with respect to the density of points, within a given box size, eps.  By default this will not give duplicates, i.e. y_init != y_fin.  If you want to override this, specify dup=1.  The interpolated density function is stored in numbpoints_sample.
+!Subroutine that will take as input a point y0 and a sample table, sample_table.
+!This subroutine will perform a nearest neighbor interpolation on sample_table with
+!respect to the density of points, within a given box size, eps.  By default this
+!will not give duplicates, i.e. y_init != y_fin.  If you want to override this,
+!specify dup=1.  The interpolated density function is stored in numbpoints_sample.
 
 subroutine ic_metr(y,sample_table,iccounter,epsil,dup)
 	use sorters, only : locate, heapsort
@@ -45,7 +52,12 @@ subroutine ic_metr(y,sample_table,iccounter,epsil,dup)
 	if (present(epsil)) then
     eps=epsil
   else
-    eps=energy_scale**2/m_planck
+    !When energy scale is too small, setting eps to the Hubble parameter
+    !makes the eps parameter tiny.  When we
+    !try to sample the corresponding interpolation function, the proposal
+    !distribution almost never finds a region that has a non-zero value for the
+    !interpolant.  So, we set the minimum allowable size here.
+    eps=maxval((/1e0_dp,energy_scale**2/m_planck/))
   end if
 
 	!Load the density calculation if not already done.
@@ -81,7 +93,9 @@ subroutine ic_metr(y,sample_table,iccounter,epsil,dup)
 end subroutine ic_metr
 
 
-!Subroutine that initializes the IC_METR routine.  This loads the sample_table from a file and does a burn in period.  Eps is the size of the coarse-graining for the interpolant.
+!Subroutine that initializes the IC_METR routine.  This loads the sample_table
+!from a file and does a burn in period.  Eps is the size of the coarse-graining
+!for the interpolant.
 subroutine ic_metr_init(y, iccounter, sample_table, bperiod, eps)
   use features, only : newunit
 	implicit none
@@ -256,8 +270,8 @@ subroutine load_sample_table(sample_table,switch)
 end subroutine load_sample_table
 
 
-!function to calculate the acceptance ratio for the Metropolis algorithm for the density function obtained in IC_METR.  y1 is old point, y2 is new point.
-
+!function to calculate the acceptance ratio for the Metropolis algorithm for
+!the density function obtained in IC_METR.  y1 is old point, y2 is new point.
 real(dp) function accept_ratio(y1,y2,eps)
 	use sorters, only : locate
 	implicit none
@@ -346,7 +360,5 @@ real(dp) function accept_ratio(y1,y2,eps)
     end function get_prob
 
 end function accept_ratio
-
-
 
 end module hybrid_metropolis
