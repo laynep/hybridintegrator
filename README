@@ -1,1 +1,69 @@
-This is a project to integrate hybrid inflation.
+*******************************************************************************
+Layne Price, University of Auckland, May 15, 2012.
+*******************************************************************************
+
+SUMMARY:
+A program that does integration for two field hybrid inflation.  Uses the
+integrator FCVODE from the LLNL SUNDIALS package, which requires the RHS of the
+ODE to be expressed in the external subroutine FCVFUN and the Jacobian in the
+external subroutine FCVDJAC.  These are included below the main program.
+SUNDIALS functions are stored in a library.  Uses the
+integrator LESNLS from http://people.math.gatech.edu/~dieci/software-les.html
+by Luca Dieci to perform nonlinear integration and to calculate the Lyapunov
+exponents.
+
+CAVEAT:
+A good calculation of the Lyapunov exponents requires integration over a large
+range of time.  However, because the system that we are integrating is
+dissipative, we know that at (very) late times all orbits will be at one of the
+fixed points corresponding to the minima of the potential.  Furthermore,
+friction will inevitably force the late time Lyapunov exponents --> 0.
+Consequently, any calculation of the Lyapunov exponents is merely suggestive
+and is truly representative only for systems with very little to no friction
+and in the late time limit.  Furthermore, the Lyapunov exponents are not
+invariant with respect to spacetime diffeomorphism, so the value we calculate
+here will be meaningful only for comoving observers.  However, the overall sign
+of the LE will remain the same, implying that if we find a LE>0, then any
+observer should be able to find a positive LE.
+
+
+OUTLINE:
+The program architecture is as follows: We parallelize using OpenMPI; load ICs
+according to the method specified in the namelist; integrate the initial
+condition; sort the initial condition into a "success" array if it reaches N>65
+and into a "fail" array if it reaches the minimum of the potential without
+inflating.  A new IC is chosen and the integration is repeated until we get
+enough points.  Counters on the number of points found are collected on the
+master thread and stats are printed.
+
+OPTIONS:
+Options for the program are contained in the namelists in the parameter file,
+parameters_hybrid.txt.  Program options are contained in the namelist &ics: how
+many successful initial conditions do we
+want to find (points); what method should we use to sample the IC space (IC);
+what should the time-step be (dt); do we want to print to stdout (printing); do we
+want to record the trajectories (traj).  If we are getting ICs via Metropolis
+sampling of the IC space, the namelist &sample can be used to specify the
+dimensions of the array we should be sampling and the name of the file it is
+stored in.  Similarly, the namelist &filetoread provides similar information if
+we are reading ICs explicitly from a given file, without sampling.  The &zoom
+namelist gives one point which we are to zoom in on, providing a high
+resolution sample near the given point with tolerance specified.  Note that
+this point should be put in the namelist as (e-fold,psi,phi,psi_dot,phi_dot).
+The namelist &parameters specify the particle physics parameters for hybrid
+inflation.
+
+DEPENDENCIES:
+The program subroutines are contained in the module hybrid_subroutines and the
+routines that calculate the initial conditions are contained in the
+d_hybrid_initialconditions module.  Random number generation is done with the
+module rng.  MPI functions are called with the module mpi.  When storing
+trajectories we don't a priori know how many steps it will take to reach an end
+state, so we store these as a linked list, with type and methods defined in the
+module linked_list.  The types module defines the amount of working precision;
+and the newunit function from the features module gives us the ability to open
+a new file without worrying about whether the unit has already been used.  The
+libraries from the SUNDIALS package are necessary to do the integration.  The
+modules use sorting and location routines that are collected in the sorters
+module.  All routines needed for the calculation of Lyapunov exponents are
+contained in the lyapunov_subroutines module.
