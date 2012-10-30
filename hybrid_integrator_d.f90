@@ -236,6 +236,7 @@ program hybrid_integrator_d
 		!Check if not finding any succ points.
 		call all_fail_check(successlocal, faillocal, allfailcheck, printing, check)
 		if (allfailcheck) exit icloop
+
 		!Determine loop exit condition.
 		if (ic<5 .or. ic==6) then
 			integr_ch=(successlocal<points)

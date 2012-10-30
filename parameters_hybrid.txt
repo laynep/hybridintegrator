@@ -20,8 +20,8 @@
   energy_scale=1E1
 /
 &ics
-  points=1000
-  IC=2
+  points=1
+  IC=5
   dt=5D5
   printing=.true.
   traj=.false.
@@ -33,7 +33,7 @@
 /
 &filetoread
   fname="TESTING.bin"
-  fleng=10
+  fleng=1
   fwid=4
   fform="unformatted"
 /
