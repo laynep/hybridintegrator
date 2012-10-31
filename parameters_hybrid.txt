@@ -20,8 +20,8 @@
   energy_scale=1E1
 /
 &ics
-  points=1
-  IC=5
+  points=100
+  IC=2
   dt=5D5
   printing=.true.
   traj=.false.
