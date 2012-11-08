@@ -17,14 +17,14 @@
   mu = 500D3
   nu = .015D3
   lambda = 6.8D-3
-  energy_scale=1E1
+  energy_scale=1E2
 /
 &ics
-  points=100
-  IC=2
+  points=20
+  IC=5
   dt=5D5
   printing=.true.
-  traj=.false.
+  traj=.true.
 /
 &sample
   samp_len=100000
@@ -32,8 +32,8 @@
   datafile="check_succ1e0.bin"
 /
 &filetoread
-  fname="TESTING.bin"
-  fleng=1
+  fname="1k_corepoints0002.bin"
+  fleng=20
   fwid=4
   fform="unformatted"
 /

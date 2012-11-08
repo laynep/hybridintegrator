@@ -1,0 +1,16 @@
+genmoddir=/home/lpri691/Cosmology_Research/F_projects/libraries/genmodules
+comp=gfortran
+flags=-O2
+
+all: breaktrajects.exe
+
+%.o: %.mod
+
+breaktrajects.exe: breaktrajects.o ${genmoddir}/*.o
+	$(comp) ${flags} -o breaktrajects.exe breaktrajects.o ${genmoddir}/*.o -I${genmoddir}
+
+breaktrajects.o: breaktrajects.f90 ${genmoddir}/*.o
+	$(comp) ${flags} -c breaktrajects.f90 -I${genmoddir}
+
+clean:
+	rm -f breaktrajects.exe breaktrajects.o
