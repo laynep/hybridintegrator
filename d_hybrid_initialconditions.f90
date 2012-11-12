@@ -32,10 +32,15 @@ module d_hybrid_initialconditions
 	real(dp), parameter :: beta=8.37758040957278e0_dp/(m_planck*m_planck)
 	real(dp) :: m
 	real(dp) :: mu
-	real(dp), parameter :: phi_min=0e0_dp
-	real(dp), parameter :: phi_max=.2e0_dp*m_planck
-	real(dp), parameter :: psi_min=0e0_dp
-	real(dp), parameter :: psi_max=.2e0_dp*m_planck
+
+	real(dp), parameter :: phi_min=44.9e0_dp
+	real(dp), parameter :: phi_max=45.1e0_dp
+	real(dp), parameter :: psi_min=8.9e0_dp
+	real(dp), parameter :: psi_max=9.1e0_dp
+!	real(dp), parameter :: phi_min=0e0_dp
+!	real(dp), parameter :: phi_max=.2e0_dp*m_planck
+!	real(dp), parameter :: psi_min=0e0_dp
+!	real(dp), parameter :: psi_max=.2e0_dp*m_planck
 	real(dp) :: nu
 	real(dp) :: energy_scale
 	real(dp) :: lambda
@@ -304,11 +309,9 @@ subroutine eqen_slicing(y)
     psi_0 = y(3)
 
     !Find remaining energy.
-     rho_kinetic = (energy_scale**4e0_dp) - V_h(y)
+    rho_kinetic = (energy_scale**4e0_dp) - V_h(y)
 
-    if (rho_kinetic<0) then
-			cycle
-		end if
+    if (rho_kinetic<0) cycle
 
     chi = -1e0_dp*SQRT(rho_kinetic)
     y(4)=chi

@@ -21,8 +21,8 @@
   energy_scale=1E-2
 /
 &ics
-  points=500000
-  IC=6
+  points=80000
+  IC=3
   dt=5D5
   printing=.true.
   traj=.false.
@@ -42,6 +42,6 @@
 !NOTE:   N,phi,psi,phi_dot,psi_dot
 &zoom
   yinit=0D0, 45.0, 9.0, -3.6081053368e-5, -3.6081053368e-5
-  toler=1D-4
+  toler=1D-1
 /
 
