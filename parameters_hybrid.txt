@@ -12,19 +12,20 @@
 #Points variable is the number of successful data points
 #per process, i.e. TotalPoints=points*numtasks.
 #
+# yinit=0D0, 192.62487272549939, 36.837086537979189, 100.51774144090064, 99.479563953845854,
 &parameters
   m = .03D3
   mu = 500D3
   nu = .015D3
   lambda = 6.8D-3
-  energy_scale=1E2
+  energy_scale=1E-2
 /
 &ics
-  points=20
-  IC=5
+  points=500000
+  IC=6
   dt=5D5
   printing=.true.
-  traj=.true.
+  traj=.false.
 /
 &sample
   samp_len=100000
@@ -40,7 +41,7 @@
 
 !NOTE:   N,phi,psi,phi_dot,psi_dot
 &zoom
-  yinit=0D0, 192.62487272549939, 36.837086537979189, 100.51774144090064, 99.479563953845854,
-  toler=1D-2
+  yinit=0D0, 45.0, 9.0, -3.6081053368e-5, -3.6081053368e-5
+  toler=1D-4
 /
 

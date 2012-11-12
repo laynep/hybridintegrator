@@ -15,10 +15,15 @@ program breaktrajects
   implicit none
 
   real(dp), dimension(5) :: now
-  real(dp) :: prev
-  integer :: i, j, u, w, counter
+  real(dp) :: prev, mplanck
+  integer :: j, u, w, counter
 	character(len=32) :: arg1
   character(len=13) :: newfilename
+  logical :: normalize
+
+  !Do we want to normalize the trajectories versus the Planck mass here?
+  normalize = .true.
+  mplanck = 1000e0_dp
 
   !Trajectory counter.
   counter = 1
@@ -30,7 +35,6 @@ program breaktrajects
   !Make file name and see if it exists.
   call makenewfilename(newfilename,counter,w)
 
-  i=1
   prev=0e0_dp
   do
     read(u,fmt=*) (now(j),j=1,size(now))
@@ -38,12 +42,20 @@ program breaktrajects
       !Open new file.
       close(w)
       call makenewfilename(newfilename,counter,w)
-      write(w,*) (now(j),j=1,size(now))
+    end if
+
+    if (normalize) then
+      write(w,*) now(1), now(2)/(mplanck), now(3)/(mplanck), &
+       & now(4)/(mplanck**2), now(5)/(mplanck**2)
     else
       write(w,*) (now(j),j=1,size(now))
     end if
+
     prev = now(1)
   end do
+
+  close(u)
+  close(w)
 
 end program breaktrajects
 
