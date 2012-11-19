@@ -206,6 +206,7 @@ program hybrid_integrator_d
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
 			call fcvode(tout,t,y,itask,ier)
+print*,t
       tout = tout + dt
       !*********************************
 			
@@ -242,6 +243,8 @@ program hybrid_integrator_d
 			integr_ch=(successlocal<points)
 		else if (ic==5) then
 			integr_ch=(localcount<size(ic_table,1))
+    else if (ic==7) then
+      exit
 		end if
 
 	end do icloop

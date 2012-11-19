@@ -33,14 +33,14 @@ module d_hybrid_initialconditions
 	real(dp) :: m
 	real(dp) :: mu
 
-	real(dp), parameter :: phi_min=44.9e0_dp
-	real(dp), parameter :: phi_max=45.1e0_dp
-	real(dp), parameter :: psi_min=8.9e0_dp
-	real(dp), parameter :: psi_max=9.1e0_dp
-!	real(dp), parameter :: phi_min=0e0_dp
-!	real(dp), parameter :: phi_max=.2e0_dp*m_planck
-!	real(dp), parameter :: psi_min=0e0_dp
-!	real(dp), parameter :: psi_max=.2e0_dp*m_planck
+!	real(dp), parameter :: phi_min=44.9e0_dp
+!	real(dp), parameter :: phi_max=45.1e0_dp
+!	real(dp), parameter :: psi_min=8.9e0_dp
+!	real(dp), parameter :: psi_max=9.1e0_dp
+	real(dp), parameter :: phi_min=0e0_dp
+	real(dp), parameter :: phi_max=.2e0_dp*m_planck
+	real(dp), parameter :: psi_min=0e0_dp
+	real(dp), parameter :: psi_max=.2e0_dp*m_planck
 	real(dp) :: nu
 	real(dp) :: energy_scale
 	real(dp) :: lambda
@@ -273,10 +273,10 @@ subroutine fixed_ic(y)
 
 	real(dp), dimension(5), intent(out) :: y
 
-	phi_0 = 0e0_dp
-	psi_0 = 4e0_dp*m_planck
-	phi_dot_0 =0e0_dp
-	psi_dot_0 =0e0_dp
+	phi_0 = 29.092534874291754_dp
+	psi_0 = 64.663923706055400_dp
+	phi_dot_0 =46.619723821534521_dp
+	psi_dot_0 =133.51629619827270_dp
 	y(1)=0e0_dp
 	y(2)=phi_0
 	y(3)=psi_0

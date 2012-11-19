@@ -18,14 +18,14 @@
   mu = 500D3
   nu = .015D3
   lambda = 6.8D-3
-  energy_scale=1E-2
+  energy_scale=1E-1
 /
 &ics
-  points=80000
-  IC=3
+  points=1
+  IC=2
   dt=5D5
   printing=.true.
-  traj=.false.
+  traj=.true.
 /
 &sample
   samp_len=100000
