@@ -303,7 +303,7 @@ subroutine set_paramsFCVODE(rpar, neq, nglobal, numtasks, iatol, atol, rtol, &
 	rtol = 1e-10_dp
 	meth = 2
 	itmetH = 2
-	t0=0_dp
+	t0=0e0_dp
 	t=t0
 	itask = 1
 	tout = dt

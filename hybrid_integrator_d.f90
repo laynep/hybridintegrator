@@ -206,7 +206,6 @@ program hybrid_integrator_d
 			!*********************************
 			!Perform the integration. dt set in namelist ics.
 			call fcvode(tout,t,y,itask,ier)
-print*,t
       tout = tout + dt
       !*********************************
 			

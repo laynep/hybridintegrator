@@ -227,7 +227,7 @@ subroutine ic_eqen_pert(y0,y1,iccounter,metric,sig,en)
 	phi_dot_0 = y1(4)
 
 	!Reinitialize the e-fold value: y(1)~N.
-	y1(1)=0e0_dp 		
+	y1(1)=0e0_dp
 
 end subroutine ic_eqen_pert
 
@@ -260,7 +260,7 @@ subroutine d_ic_zerov(y)
 	psi_dot_0=y(5)
 
 	!Reinitialize the cosmology equation values.
-	y(1)=0e0_dp 
+	y(1)=0e0_dp
 		
 	
 end subroutine d_ic_zerov
@@ -326,6 +326,8 @@ subroutine eqen_slicing(y)
 
 end subroutine eqen_slicing
 
+!**************************************************************************************
+
 subroutine eqen_eqvel(y)
 	implicit none
 
@@ -363,6 +365,8 @@ subroutine eqen_eqvel(y)
 
 end subroutine eqen_eqvel
 
+!**************************************************************************************
+
 !Gives uniform sample of IC from 0-1.  GOOD FOR TESTING.
 subroutine ic_test(y)
 	implicit none
@@ -377,6 +381,8 @@ subroutine ic_test(y)
 	end do
 
 end subroutine ic_test
+
+!**************************************************************************************
 
 !Subroutine to open a file to read ICs from.  File has "length" x "dimn"-dimensional points, which are both passed as arguments to this routine.  Reads into temporary array from rank=0 (master), then scatters pieces to other threads in variable ic_table.
 subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, dimn)
@@ -426,6 +432,8 @@ subroutine readdist_icfromfile(rank, numtasks, ic_table, fname, formt, length, d
 
 end subroutine readdist_icfromfile
 
+!**************************************************************************************
+
 !Subroutine to get the xth initial condition from an array ic_table.
 subroutine ic_fromarray(y,ic_table,x)
 	implicit none
@@ -447,6 +455,7 @@ subroutine ic_fromarray(y,ic_table,x)
 
 end subroutine ic_fromarray
 
+!**************************************************************************************
 
 !Subroutine that initializes the file to read from.
 subroutine ic_file_init(y0, rank,numtasks,ic_table)
@@ -478,6 +487,8 @@ subroutine ic_file_init(y0, rank,numtasks,ic_table)
 
 
 end subroutine ic_file_init
+
+!**************************************************************************************
 
 !Calculate the energy of a vector --- for testing.
 pure real(dp) function energy_vector(y)
