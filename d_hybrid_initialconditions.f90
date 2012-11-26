@@ -288,11 +288,12 @@ end subroutine fixed_ic
 !****************************************************************************
 !Subroutine that slices the eqen surface.  This particular choice sets psi_0=0 so that all the initial conditions are set in (if the velocities were then zero) the inflationary valley.  psi_dot_0 is set by the energy constraint so that we can plot phi_0 vs phi_dot_0 as a two-dimensional representation of the three-dimensional slice.
 
-subroutine eqen_slicing(y)
+subroutine eqen_slicing(y,slicecond)
 	implicit none
 
 	real(dp), dimension(:), intent(out) :: y
-	real(dp) :: rand_1, rand_2, rand_3, chi
+  character(len=2), intent(in) :: slicecond
+	real(dp) :: rand_1, rand_2, rand_3, chi, neg, pos
 	real(dp) :: phi_dot_max, phi_dot_min, rho_kinetic, psi_dot_max, psi_dot_min
 
 	!Initialize.
@@ -301,69 +302,71 @@ subroutine eqen_slicing(y)
    	!Set phi_0 randomly.
     call random_number(rand_1)
     y(2)=(rand_1*(phi_max-phi_min)) + phi_min
-    phi_0 = y(2)
 
     !Set psi_0 randomly.
     call random_number(rand_1)
     y(3)=(rand_1*(psi_max-psi_min)) + psi_min
-    psi_0 = y(3)
 
     !Find remaining energy.
     rho_kinetic = (energy_scale**4e0_dp) - V_h(y)
 
-    if (rho_kinetic<0) cycle
+    if (rho_kinetic<0) then
+      cycle
+    else
+      exit
+    end if
 
-    chi = -1e0_dp*SQRT(rho_kinetic)
-    y(4)=chi
-    phi_dot_0=chi
-    y(5)=chi
-    psi_dot_0=chi
+  end do
 
-    exit
 
-   end do
+  !Field vel when both are equal.
+  chi = sqrt(rho_kinetic)
+  neg = -1e0_dp*chi
+  pos = 1e0_dp*chi
+
+  !Slice with vel mags equal and both negative.
+  if (slicecond == "nn") then
+    y(4) = neg
+    y(5) = neg
+  !Slice with vel mags equal and psi negative phi positive.
+  else if (slicecond == "np") then
+    y(4) = pos
+    y(5) = neg
+  !Slice with vel mags equal and psi positive phi negative.
+  else if (slicecond == "pn") then
+    y(4) = neg
+    y(5) = pos
+  !Slice with vel mags equal and both positive.
+  else if (slicecond == "pp") then
+    y(4) = pos
+    y(5) = pos
+
+  !Slice with phi vel = 0 and psi negative.
+  else if (slicecond == "n0") then
+    y(4) = 0e0_dp
+    y(5) = -1e0_dp*sqrt(2e0_dp*rho_kinetic)
+  !Slice with phi vel = 0 and psi positive.
+  else if (slicecond == "p0") then
+    y(4) = 0e0_dp
+    y(5) = sqrt(2e0_dp*rho_kinetic)
+  !Slice with psi vel = 0 and phi negative.
+  else if (slicecond == "0n") then
+    y(4) = -1e0_dp*sqrt(2e0_dp*rho_kinetic)
+    y(5) = 0e0_dp
+  !Slice with psi vel = 0 and phi positive.
+  else if (slicecond == "0p") then
+    y(4) = sqrt(2e0_dp*rho_kinetic)
+    y(5) = 0e0_dp
+  end if
+
+  !Set initial conds.
+  phi_0 = y(2)
+  psi_0 = y(3)
+  phi_dot_0=y(4)
+  psi_dot_0=y(5)
 
 
 end subroutine eqen_slicing
-
-!**************************************************************************************
-
-subroutine eqen_eqvel(y)
-	implicit none
-
-	real(dp), dimension(:), intent(out) :: y
-	real(dp) :: rand_1, rho_kinetic, chi
-	
-	!Initialize
-	y=0e0_dp
-
-	do
-		!Set phi_0 randomly.
-    call random_number(rand_1)
-    y(2)=(rand_1*(phi_max-phi_min)) + phi_min
-    phi_0 = y(2)
-
-		!Set psi_0 randomly.
-    call random_number(rand_1)
-    y(3)=(rand_1*(psi_max-psi_min)) + psi_min
-    psi_0 = y(3)
-
-		!Find remaining energy.
-    rho_kinetic = (energy_scale**4e0_dp) - V_h(y)
-
-		if (rho_kinetic<0) cycle
-
-		chi = sqrt(rho_kinetic)
-		y(4)=chi
-		phi_dot_0=chi
-		y(5)=chi
-		psi_dot_0=chi
-
-		exit
-
-	end do
-
-end subroutine eqen_eqvel
 
 !**************************************************************************************
 

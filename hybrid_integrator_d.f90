@@ -79,6 +79,7 @@ program hybrid_integrator_d
 	real(dp) :: check, v, ratio, toler
 	logical :: leave, allfailcheck, printing, traj
 	logical :: integr_ch
+  character(len=2) :: slicecond
 	!Variables to load IC from file for direct read or interpolation (ic=4,5)
 	real(dp), dimension(:,:), allocatable :: sample_table, ic_table
 	!List to record trajectory.
@@ -93,7 +94,7 @@ program hybrid_integrator_d
 	integer :: ier, iatol, iout(21), itask
 	real(dp) :: rtol, atol(5)
 
-	namelist /ics/ points, IC, dt, printing, traj
+	namelist /ics/ points, ic, dt, printing, traj, slicecond
 
 	!***********************************************************************
 	!***********************************************************************
@@ -150,7 +151,7 @@ program hybrid_integrator_d
 	!Set first IC.
   burnin=10000
   call ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
-  &numtasks, ic_table, yref, toler, printing)
+  &numtasks, ic_table, yref, toler, printing, slicecond)
 	Y=Y0
 
 	!Initialize FCVODE integrator.
@@ -175,7 +176,7 @@ program hybrid_integrator_d
 		localcount = localcount + 1
 		!Get new point if on second or greater run.
 		if (localcount>1) then
-			call new_point(y0,iccounter,sample_table, ic, &
+			call new_point(y0,iccounter,sample_table, ic, slicecond, &
 				&ic_table, yref, toler)
 
 			!Reinit time and Y

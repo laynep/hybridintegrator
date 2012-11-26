@@ -1,12 +1,13 @@
 ######################################################
 #Initial condition subroutines to invoke.
-#	IC = 1		!IC with zero vel slice.
-#	IC = 2		!IC on eq energy slice.
-#	IC = 3		!IC as a slicing of EQEN slice.
-#	IC = 4		!IC from Metropolis Algorithm.
-#	IC = 5		!IC from a file.
-#	IC = 6		!IC sample zoomed on ! success point.
-# IC = 7    !IC sample from a fixed initial condition in
+#	IC = 1		IC with zero vel slice.
+#	IC = 2		IC on eq energy slice.
+#	IC = 3		IC as a slicing of EQEN slice (use slicecond to get
+#	          {psi,phi}={n/p/0,n/p/0}
+#	IC = 4		IC from Metropolis Algorithm.
+#	IC = 5		IC from a file.
+#	IC = 6		IC sample zoomed on ! success point.
+# IC = 7    IC sample from a fixed initial condition in
 # d_hybrid_initialconditions module.
 #
 #Points variable is the number of successful data points
@@ -18,14 +19,15 @@
   mu = 500D3
   nu = .015D3
   lambda = 6.8D-3
-  energy_scale=1E-2
+  energy_scale=1E2
 /
 &ics
   points=10
-  IC=2
+  IC=3
   dt=5D5
   printing=.true.
-  traj=.true.
+  traj=.false.
+  slicecond="nn"
 /
 &sample
   samp_len=100000

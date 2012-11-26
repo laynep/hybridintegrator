@@ -180,7 +180,7 @@ subroutine hybrid_finalstats(ic, counter, failcount, badfieldcounter, &
 end subroutine hybrid_finalstats
 
 !Get a new point with method specified by "IC."
-subroutine new_point(y0,iccounter,sample_table,ic, ic_table, yref, toler)
+subroutine new_point(y0,iccounter,sample_table, ic, slicecond, ic_table, yref, toler)
 	implicit none
 
 	real(dp), dimension(:), intent(inout) :: y0
@@ -188,6 +188,7 @@ subroutine new_point(y0,iccounter,sample_table,ic, ic_table, yref, toler)
 	real(dp), optional, intent(in) :: toler
 	integer, intent(inout) :: iccounter
 	integer, intent(in) :: ic
+  character(len=2), intent(in) :: slicecond
 	real(dp), dimension(:,:), allocatable, intent(inout) :: sample_table
 	real(dp), dimension(:,:), optional, intent(in) :: ic_table
 
@@ -197,7 +198,7 @@ subroutine new_point(y0,iccounter,sample_table,ic, ic_table, yref, toler)
 	else if (ic == 2) then
 		call d_ic_eqen(y0,iccounter)
 	else if (ic==3) then
-		call eqen_slicing(y0)
+		call eqen_slicing(y0,slicecond)
 	else if (ic==4) then
 		call ic_metr(y0,sample_table,iccounter)
 	else if (ic==5) then
@@ -426,7 +427,7 @@ end function euclidean
 !Subroutine to obtain the first initial condition.  The way that the initial
 !conditions are chosen depend on the value of the integer ic.
 subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
-  &numtasks, ic_table, yref, toler, printing)
+  &numtasks, ic_table, yref, toler, printing, slicecond)
   implicit none
 
   real(dp), dimension(:), intent(out) :: y0, yref
@@ -434,6 +435,7 @@ subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
   real(dp), dimension(:,:), allocatable, intent(out) :: sample_table, ic_table
   real(dp), intent(inout) :: toler
   logical, intent(in) :: printing
+  character(len=2), intent(in) :: slicecond
 
 	if (ic == 1) then
 		!Zero vel slice.
@@ -443,7 +445,7 @@ subroutine ic_init(ic, y0, iccounter, sample_table, burnin, rank,&
 		call d_ic_eqen(y0,iccounter)
 	else if (ic==3) then
 		!Subslice of eq en slice.
-		call eqen_slicing(y0)
+		call eqen_slicing(y0, slicecond)
 	else if (ic==4) then
 		!Metropolis sample a dataset.
     if (printing) print*, "Building Metropolis sample."
